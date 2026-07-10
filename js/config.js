@@ -26,7 +26,7 @@ window.ICE_CONFIG = {
       "Acesso em vários aparelhos",
       "Suporte pelo WhatsApp",
     ],
-    paymentLink: "",   // ex: "https://mpago.la/xxxxx" (link de pagamento recorrente)
+    paymentLink: "https://mpago.la/1PkzmZC", // link de pagamento Mercado Pago
     pixKey: "",        // ex: chave PIX (email/telefone/aleatória) pra pagamento manual
     whatsapp: "",      // ex: "5511999998888" — suporte/envio de comprovante
   },
