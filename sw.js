@@ -2,7 +2,7 @@
    Estratégia: network-first pro HTML (nunca ficar preso numa versão velha),
    cache-first com atualização em segundo plano pros demais arquivos.
    IMPORTANTE: dar bump em CACHE_VERSION a cada deploy relevante. */
-const CACHE_VERSION = "ice-v1";
+const CACHE_VERSION = "ice-v2";
 const ASSETS = [
   "./",
   "./index.html",
@@ -27,6 +27,7 @@ const ASSETS = [
   "./js/views-assistente.js",
   "./js/views-financeiro.js",
   "./js/views-extras.js",
+  "./js/views-assinatura.js",
   "./js/views-config.js",
   "./vendor/leaflet/leaflet.js",
   "./vendor/leaflet/leaflet.css",

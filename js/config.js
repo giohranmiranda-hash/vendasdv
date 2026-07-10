@@ -10,5 +10,24 @@
    ===================================================================== */
 window.ICE_CONFIG = {
   SUPABASE_URL: "", // ex: "https://abcdefghijklm.supabase.co"
-  SUPABASE_ANON_KEY: "", // ex: "eyJhbGciOiJIUzI1NiIs..."
+  SUPABASE_ANON_KEY: "", // ex: "eyJhbGciOiJIUzI1NiIs...",
+
+  /* ------ Assinatura (tela 💎 Assinatura) ------
+     Como o app é 100% estático, a cobrança usa link de pagamento externo
+     (Mercado Pago, Stripe, Kiwify etc.) e/ou PIX. Quem pagou/não pagou é
+     controlado por você no painel do Supabase (Authentication → desativar
+     usuário corta o acesso à nuvem). */
+  PLAN: {
+    name: "Plano Mensal",
+    price: "R$ 49,90/mês",
+    benefits: [
+      "Todos os módulos liberados",
+      "Dados na nuvem com backup automático",
+      "Acesso em vários aparelhos",
+      "Suporte pelo WhatsApp",
+    ],
+    paymentLink: "",   // ex: "https://mpago.la/xxxxx" (link de pagamento recorrente)
+    pixKey: "",        // ex: chave PIX (email/telefone/aleatória) pra pagamento manual
+    whatsapp: "",      // ex: "5511999998888" — suporte/envio de comprovante
+  },
 };

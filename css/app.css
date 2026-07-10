@@ -106,34 +106,59 @@ nav.menu button.on { background: var(--accent-soft); color: var(--accent-text); 
 
 main#view { flex: 1; padding: 20px 22px 90px; max-width: 1200px; width: 100%; margin: 0 auto; min-width: 0; }
 
-/* topbar mobile */
+/* topbar mobile + gaveta (☰) */
 .topbar { display: none; }
+#drawer, #drawer-back { display: none; }
 @media (max-width: 899px) {
   #app.on { display: block; }
   .sidebar { display: none; }
   .topbar {
-    display: flex; align-items: center; gap: 10px;
+    display: block;
     position: sticky; top: 0; z-index: 60;
     background: rgba(13, 17, 23, 0.94); backdrop-filter: blur(8px);
-    border-bottom: 1px solid var(--line); padding: 10px 12px 0;
-    flex-direction: column; align-items: stretch;
+    border-bottom: 1px solid var(--line); padding: 10px 12px;
   }
   .topbar .tb-row { display: flex; align-items: center; gap: 10px; }
-  .topbar .blogo { width: 32px; height: 32px; font-size: 22px; display: flex; align-items: center; justify-content: center; border-radius: 8px; background: var(--accent-soft); overflow: hidden; }
+  .topbar .blogo { width: 32px; height: 32px; font-size: 22px; display: flex; align-items: center; justify-content: center; border-radius: 8px; background: var(--accent-soft); overflow: hidden; flex-shrink: 0; }
   .topbar .blogo img { width: 100%; height: 100%; object-fit: cover; }
-  .topbar .bname { font-weight: 700; font-size: 0.95rem; flex: 1; }
+  .topbar .bname { font-weight: 700; font-size: 0.95rem; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .topbar .sync-dot { font-size: 0.72rem; color: var(--muted); }
-  .tabs {
-    display: flex; gap: 4px; overflow-x: auto; padding: 8px 2px;
-    scrollbar-width: none; -webkit-overflow-scrolling: touch;
+  #btn-drawer {
+    background: var(--card); border: 1px solid var(--line); color: var(--accent-text);
+    border-radius: 10px; padding: 6px 12px; font-size: 1.15rem; line-height: 1;
   }
-  .tabs::-webkit-scrollbar { display: none; }
-  .tabs button {
-    flex-shrink: 0; background: transparent; border: 1px solid transparent; color: var(--muted);
-    padding: 6px 11px; border-radius: 999px; font-weight: 600; font-size: 0.82rem;
-  }
-  .tabs button.on { background: var(--accent-soft); color: var(--accent-text); border-color: color-mix(in srgb, var(--accent) 40%, transparent); }
   main#view { padding: 14px 12px 90px; }
+
+  #drawer-back {
+    display: block; position: fixed; inset: 0; z-index: 90;
+    background: rgba(4, 7, 12, 0.65); opacity: 0; pointer-events: none;
+    transition: opacity 0.25s ease;
+  }
+  #drawer {
+    display: flex; flex-direction: column;
+    position: fixed; top: 0; left: 0; bottom: 0; z-index: 91;
+    width: min(78vw, 300px); background: var(--bg2);
+    border-right: 1px solid var(--line); box-shadow: var(--shadow);
+    transform: translateX(-102%); transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+    overflow-y: auto;
+  }
+  body.drawer-open #drawer { transform: translateX(0); }
+  body.drawer-open #drawer-back { opacity: 1; pointer-events: auto; }
+  #drawer .brand { display: flex; align-items: center; gap: 10px; padding: 16px 14px 12px; border-bottom: 1px solid var(--line); }
+  #drawer .blogo { width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; font-size: 26px; border-radius: 10px; background: var(--accent-soft); overflow: hidden; flex-shrink: 0; }
+  #drawer .blogo img { width: 100%; height: 100%; object-fit: cover; }
+  #drawer .bname { font-weight: 700; font-size: 0.95rem; }
+  #drawer .btag { color: var(--muted); font-size: 0.72rem; }
+  #btn-drawer-close { margin-left: auto; background: transparent; border: 0; color: var(--muted); font-size: 1.1rem; padding: 6px; }
+  #drawer nav.menu { padding: 8px; flex: 1; }
+  #drawer nav.menu button {
+    display: flex; align-items: center; gap: 10px; width: 100%;
+    background: transparent; border: 0; color: var(--muted);
+    padding: 11px 12px; border-radius: 10px; font-weight: 600; font-size: 0.95rem;
+    text-align: left;
+  }
+  #drawer nav.menu button.on { background: var(--accent-soft); color: var(--accent-text); }
+  #drawer .sync-foot { padding: 12px 14px; border-top: 1px solid var(--line); font-size: 0.75rem; color: var(--muted); }
 }
 
 /* ============ COMPONENTES ============ */

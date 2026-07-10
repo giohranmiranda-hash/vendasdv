@@ -351,6 +351,44 @@ test("assistente local responde perguntas por palavra-chave", async ({ page }) =
   await expect(page.locator(".chat-msg.bot").last()).toContainText("lucro líquido", { ignoreCase: true });
 });
 
+test("mobile: menu hambúrguer abre gaveta, navega e fecha", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await bootWithTemplate(page);
+  await expect(page.locator("#btn-drawer")).toBeVisible();
+  await page.click("#btn-drawer");
+  await expect(page.locator("body")).toHaveClass(/drawer-open/);
+  await expect(page.locator("#drawer")).toBeVisible();
+  // navega pela gaveta
+  await page.click('#menu-drawer [data-nav="vendas"]');
+  await expect(page.locator("body")).not.toHaveClass(/drawer-open/); // fechou sozinha
+  await expect(page.locator("#view h2")).toContainText("Vendas");
+  // backdrop também fecha
+  await page.click("#btn-drawer");
+  await page.click("#drawer-back", { position: { x: 380, y: 400 } });
+  await expect(page.locator("body")).not.toHaveClass(/drawer-open/);
+});
+
+test("assinatura: mostra plano, PIX copiável e botão de pagamento quando configurados", async ({ page }) => {
+  await bootWithTemplate(page);
+  await page.evaluate(() => {
+    ICE_CONFIG.PLAN.paymentLink = "https://mpago.la/teste";
+    ICE_CONFIG.PLAN.pixKey = "pix@icesistema.com";
+    ICE_CONFIG.PLAN.whatsapp = "5511999998888";
+    App.go("assinatura");
+  });
+  await expect(page.locator("#view h2")).toContainText("Assinatura");
+  await expect(page.locator("#pay-link")).toBeVisible();
+  await expect(page.locator("#pay-pix-copy")).toBeVisible();
+  await expect(page.locator("#pay-wa")).toBeVisible();
+  await expect(page.locator("#view")).toContainText("R$ 49,90/mês");
+});
+
+test("assinatura sem configuração: instrui o dono do sistema", async ({ page }) => {
+  await bootWithTemplate(page);
+  await page.evaluate(() => App.go("assinatura"));
+  await expect(page.locator("#view .banner.info")).toContainText("Pagamento ainda não configurado");
+});
+
 test("sem nuvem configurada: login esconde formulário e oferece offline", async ({ page }) => {
   await page.goto("/index.html");
   await expect(page.locator("#login-form")).toBeHidden();

@@ -87,12 +87,24 @@
           <div class="blogo" id="brand-logo-m">❄️</div>
           <div class="bname" id="brand-name-m">Ice Sistema</div>
           <div class="sync-dot" id="sync-foot-m">—</div>
+          <button id="btn-drawer" aria-label="Abrir menu">☰</button>
         </div>
-        <div class="tabs" id="menu-mobile"></div>
       </div>
       <main id="view"></main>
     </div>
   </div>
+
+  <!-- gaveta de navegação (mobile) -->
+  <div id="drawer-back"></div>
+  <aside id="drawer" aria-label="Menu">
+    <div class="brand">
+      <div class="blogo" id="brand-logo-d">❄️</div>
+      <div><div class="bname" id="brand-name-d">Ice Sistema</div><div class="btag" id="brand-tag-d"></div></div>
+      <button id="btn-drawer-close" aria-label="Fechar menu">✕</button>
+    </div>
+    <nav class="menu" id="menu-drawer"></nav>
+    <div class="sync-foot" id="sync-foot-d">—</div>
+  </aside>
 
   <div id="modal-root"></div>
   <div id="toast-root"></div>
@@ -116,6 +128,7 @@
   <script src="js/views-assistente.js"></script>
   <script src="js/views-financeiro.js"></script>
   <script src="js/views-extras.js"></script>
+  <script src="js/views-assinatura.js"></script>
   <script src="js/views-config.js"></script>
   <script src="js/app.js"></script>
 </body>

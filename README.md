@@ -65,6 +65,21 @@ Sem configurar nada, o app funciona no **modo offline** (dados no localStorage d
 No celular, abra o site e use "Adicionar à tela inicial" (Android/Chrome mostra o banner
 automaticamente). Funciona offline; quando a internet volta, sincroniza sozinho.
 
+## 💎 Cobrando a mensalidade dos seus clientes
+
+A tela **Assinatura** mostra o plano e os botões de pagamento pro seu cliente. Configure
+em [`js/config.js`](js/config.js), no bloco `PLAN`:
+
+- `paymentLink` — link de pagamento recorrente (Mercado Pago → "Assinaturas" → criar link;
+  ou Stripe Payment Link, Kiwify, Hotmart etc.)
+- `pixKey` — sua chave PIX, pra quem prefere pagar manual (botão "copiar chave")
+- `whatsapp` — seu número (com DDI, ex `5511999998888`) pra receber comprovante/suporte
+- `name`, `price`, `benefits` — texto do plano
+
+**Corte de acesso de quem não paga:** no painel do Supabase → **Authentication → Users**,
+banir/desativar o usuário bloqueia o login na nuvem. Os dados ficam guardados e voltam
+quando a assinatura reativar.
+
 ## 🔑 Integrações opcionais (por tenant, nas Configurações)
 
 - **LocationIQ** (geocodificação precisa): chave grátis em locationiq.com, colada em

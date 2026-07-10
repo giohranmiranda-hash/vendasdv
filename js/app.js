@@ -21,6 +21,7 @@ const App = {
     { id: "relatorios", icon: "📈", label: "Relatórios", render: () => ViewExtras.renderRelatorios() },
     { id: "metas", icon: "🏁", label: "Metas & Comissões", render: () => ViewExtras.renderMetas() },
     { id: "calendario", icon: "📅", label: "Calendário", render: () => ViewExtras.renderCalendario() },
+    { id: "assinatura", icon: "💎", label: "Assinatura", render: () => ViewAssinatura.render() },
     { id: "config", icon: "⚙️", label: "Configurações", render: () => ViewConfig.render() },
   ],
 
@@ -41,10 +42,10 @@ const App = {
     const logoHtml = s.logo && s.logo.type === "image"
       ? `<img src="${U.esc(s.logo.value)}" alt="logo">`
       : U.esc((s.logo && s.logo.value) || "❄️");
-    for (const id of ["brand-logo", "brand-logo-m"]) U.$("#" + id).innerHTML = logoHtml;
-    U.$("#brand-name").textContent = name;
-    U.$("#brand-name-m").textContent = name;
+    for (const id of ["brand-logo", "brand-logo-m", "brand-logo-d"]) U.$("#" + id).innerHTML = logoHtml;
+    for (const id of ["brand-name", "brand-name-m", "brand-name-d"]) U.$("#" + id).textContent = name;
     U.$("#brand-tag").textContent = s.tagline || "";
+    U.$("#brand-tag-d").textContent = s.tagline || "";
     document.title = name + " — Ice Sistema";
   },
 
@@ -59,6 +60,7 @@ const App = {
     };
     const txt = map[st] || "—";
     U.$("#sync-foot").textContent = txt;
+    U.$("#sync-foot-d").textContent = txt;
     U.$("#sync-foot-m").textContent = txt.split(" ")[0];
   },
 
@@ -68,18 +70,20 @@ const App = {
       `<button data-nav="${v.id}" class="${App.currentView === v.id ? "on" : ""}">` +
       `<span class="mi">${v.icon}</span><span>${U.esc(v.label)}</span></button>`;
     U.$("#menu-desktop").innerHTML = App.views.map(mk).join("");
-    U.$("#menu-mobile").innerHTML = App.views.map((v) =>
-      `<button data-nav="${v.id}" class="${App.currentView === v.id ? "on" : ""}">${v.icon} ${U.esc(v.label)}</button>`).join("");
+    U.$("#menu-drawer").innerHTML = App.views.map(mk).join("");
     U.$$("[data-nav]").forEach((b) => (b.onclick = () => App.go(b.dataset.nav)));
+  },
+
+  openDrawer(open) {
+    document.body.classList.toggle("drawer-open", open);
   },
 
   go(viewId) {
     App.currentView = viewId;
+    App.openDrawer(false);
     App.renderMenu();
     App.render();
     U.$("#view").scrollIntoView({ block: "start" });
-    const tab = U.$(`#menu-mobile [data-nav="${viewId}"]`);
-    if (tab && tab.scrollIntoView) tab.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
   },
 
   render() {
@@ -174,6 +178,11 @@ const App = {
 
   /* ---------- boot ---------- */
   boot() {
+    // gaveta mobile (☰)
+    U.$("#btn-drawer").onclick = () => App.openDrawer(true);
+    U.$("#btn-drawer-close").onclick = () => App.openDrawer(false);
+    U.$("#drawer-back").onclick = () => App.openDrawer(false);
+
     // service worker (PWA)
     if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
       navigator.serviceWorker.register("sw.js").catch((e) => console.warn("sw", e));
