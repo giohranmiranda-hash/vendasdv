@@ -24,27 +24,47 @@ Deno.serve(async (req) => {
     let body: Record<string, unknown> = {};
     try { body = await req.json(); } catch (_) { /* notificações GET/vazias */ }
 
-    // Mercado Pago manda {type:"payment", data:{id}} (ou topic/id na query)
-    const type = (body as any).type || url.searchParams.get("topic") || "";
-    const paymentId = (body as any).data?.id || url.searchParams.get("id") || (body as any).id;
-    if (!String(type).includes("payment") || !paymentId) {
+    // Mercado Pago manda {type:"payment", data:{id}} (ou topic/id na query).
+    // Assinaturas recorrentes chegam como "subscription_authorized_payment".
+    const type = String((body as any).type || (body as any).topic || url.searchParams.get("topic") || "");
+    const eventId = (body as any).data?.id || url.searchParams.get("id") || (body as any).id;
+    if (!eventId || !/payment/.test(type)) {
       return new Response("ignored", { status: 200 });
     }
 
-    // confirma o pagamento direto na API do MP (nunca confie só no webhook)
     const mpToken = Deno.env.get("MP_ACCESS_TOKEN");
     if (!mpToken) return new Response("MP_ACCESS_TOKEN ausente", { status: 500 });
-    const mpRes = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
-      headers: { Authorization: `Bearer ${mpToken}` },
-    });
-    if (!mpRes.ok) return new Response("pagamento não encontrado", { status: 200 });
-    const payment = await mpRes.json();
-    if (payment.status !== "approved") return new Response("não aprovado ainda", { status: 200 });
+    const mpGet = (path: string) =>
+      fetch(`https://api.mercadopago.com${path}`, { headers: { Authorization: `Bearer ${mpToken}` } });
 
-    const email: string | undefined =
-      payment.payer?.email || payment.additional_info?.payer?.email;
-    // external_reference pode carregar o user_id (se você gerar links por cliente)
-    const externalRef: string | undefined = payment.external_reference;
+    // confirma direto na API do MP (nunca confie só no corpo do webhook)
+    let email: string | undefined;
+    let externalRef: string | undefined;
+    if (type.includes("subscription_authorized_payment")) {
+      // cobrança recorrente de assinatura: busca a cobrança e a assinatura-mãe
+      const apRes = await mpGet(`/authorized_payments/${eventId}`);
+      if (!apRes.ok) return new Response("cobrança não encontrada", { status: 200 });
+      const ap = await apRes.json();
+      const st = ap.payment?.status || ap.status;
+      if (st !== "approved" && st !== "processed") return new Response("não aprovado ainda", { status: 200 });
+      externalRef = ap.external_reference || ap.preapproval?.external_reference;
+      if (ap.preapproval_id) {
+        const preRes = await mpGet(`/preapproval/${ap.preapproval_id}`);
+        if (preRes.ok) {
+          const pre = await preRes.json();
+          email = pre.payer_email;
+          externalRef = externalRef || pre.external_reference;
+        }
+      }
+    } else {
+      // pagamento avulso (link de pagamento comum)
+      const mpRes = await mpGet(`/v1/payments/${eventId}`);
+      if (!mpRes.ok) return new Response("pagamento não encontrado", { status: 200 });
+      const payment = await mpRes.json();
+      if (payment.status !== "approved") return new Response("não aprovado ainda", { status: 200 });
+      email = payment.payer?.email || payment.additional_info?.payer?.email;
+      externalRef = payment.external_reference;
+    }
 
     const admin = createClient(
       Deno.env.get("SUPABASE_URL")!,
