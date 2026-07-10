@@ -9,8 +9,8 @@
    (localStorage) e a tela de login oferece apenas o modo offline.
    ===================================================================== */
 window.ICE_CONFIG = {
-  SUPABASE_URL: "", // ex: "https://abcdefghijklm.supabase.co"
-  SUPABASE_ANON_KEY: "", // ex: "eyJhbGciOiJIUzI1NiIs...",
+  SUPABASE_URL: "https://nvrdqiklksarfxuwoznx.supabase.co", // projeto SDV VENDA (sa-east-1)
+  SUPABASE_ANON_KEY: "", // ← cole aqui a chave "anon public" (Settings → API Keys),
 
   /* ------ Assinatura (tela 💎 Assinatura) ------
      Como o app é 100% estático, a cobrança usa link de pagamento externo
