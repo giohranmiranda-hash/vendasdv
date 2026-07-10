@@ -1,0 +1,26 @@
+{
+  "name": "vendasdv",
+  "version": "1.0.0",
+  "description": "Sistema de gestão **multi-empresa (multi-tenant) e white-label** para negócios de gelo saborizado, sorvete, picolé e bebidas geladas. Cada cliente que assina cria a própria conta, tem os dados **isolados** e personaliza tudo: nome, logo, cor, sabores, receitas, preços, mensagens de WhatsApp — nada é fixo no código.",
+  "main": "sw.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/giohranmiranda-hash/vendasdv.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/giohranmiranda-hash/vendasdv/issues"
+  },
+  "homepage": "https://github.com/giohranmiranda-hash/vendasdv#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.61.1"
+  }
+}

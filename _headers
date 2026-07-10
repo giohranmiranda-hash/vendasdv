@@ -1,0 +1,11 @@
+# Netlify — cabeçalhos de segurança do Ice Sistema
+# CSP restritiva: só self + os domínios exatos de API/tiles usados pelo app.
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.tile.openstreetmap.org; connect-src 'self' https://*.supabase.co https://brasilapi.com.br https://viacep.com.br https://nominatim.openstreetmap.org https://us1.locationiq.com https://generativelanguage.googleapis.com; font-src 'self'; manifest-src 'self'; worker-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), payment=()
+
+/sw.js
+  Cache-Control: no-cache
