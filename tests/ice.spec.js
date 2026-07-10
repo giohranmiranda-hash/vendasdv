@@ -480,6 +480,22 @@ test("sem nuvem configurada: login esconde formulário e oferece offline", async
   await expect(page.locator("#btn-offline")).toBeVisible();
 });
 
+test("sair da conta: item no menu, confirma e volta pra tela de login", async ({ page }) => {
+  await bootWithTemplate(page);
+  // item presente na sidebar e na gaveta
+  await expect(page.locator("#menu-desktop [data-logout]")).toBeVisible();
+  expect(await page.locator("#menu-drawer [data-logout]").count()).toBe(1);
+  await page.click("#menu-desktop [data-logout]");
+  await expect(page.locator("#modal-root")).toContainText("Sair do modo offline?");
+  await page.click('[data-a="yes"]');
+  // volta pro login (não reentra sozinho no modo offline)
+  await expect(page.locator("#login-screen")).toBeVisible();
+  await expect(page.locator("#app")).toBeHidden();
+  // e os dados continuam salvos: entrar de novo mantém o negócio
+  await page.click("#btn-offline");
+  await expect(page.locator("#brand-name")).toHaveText("Gelato Teste");
+});
+
 test("com nuvem configurada: login mostra formulário de email/senha", async ({ page }) => {
   await page.goto("/index.html");
   await page.evaluate(() => localStorage.clear());

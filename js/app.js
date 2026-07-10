@@ -99,9 +99,11 @@ const App = {
     const mk = (g) =>
       `<button data-nav="${g.id}" class="${cur.id === g.id ? "on" : ""}">` +
       `<span class="mi">${g.icon}</span><span>${U.esc(g.label)}</span></button>`;
-    U.$("#menu-desktop").innerHTML = App.groups.map(mk).join("");
-    U.$("#menu-drawer").innerHTML = App.groups.map(mk).join("");
+    const logoutBtn = `<button data-logout class="menu-logout"><span class="mi">🚪</span><span>Sair da conta</span></button>`;
+    U.$("#menu-desktop").innerHTML = App.groups.map(mk).join("") + logoutBtn;
+    U.$("#menu-drawer").innerHTML = App.groups.map(mk).join("") + logoutBtn;
     U.$$("[data-nav]").forEach((b) => (b.onclick = () => App.goGroup(b.dataset.nav)));
+    U.$$("[data-logout]").forEach((b) => (b.onclick = () => { App.openDrawer(false); App.logoutApp(); }));
     App.renderSubtabs();
   },
 
@@ -195,8 +197,13 @@ const App = {
   },
 
   logoutApp() {
-    UI.confirm("Sair da conta? Os dados continuam salvos neste aparelho e na nuvem.", () => {
+    const sess = Cloud.session();
+    const msg = sess
+      ? `Sair da conta ${sess.user.email}? Os dados continuam salvos neste aparelho e na nuvem.`
+      : "Sair do modo offline? Os dados continuam salvos neste aparelho — é só entrar de novo.";
+    UI.confirm(msg, () => {
       Cloud.logout();
+      localStorage.removeItem("ice_offline_mode"); // volta pra tela de login
       location.reload();
     }, { title: "Sair", yes: "Sair" });
   },

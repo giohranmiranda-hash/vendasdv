@@ -102,6 +102,8 @@ nav.menu button {
 nav.menu button .mi { width: 22px; text-align: center; }
 nav.menu button:hover { background: var(--card); color: var(--text); }
 nav.menu button.on { background: var(--accent-soft); color: var(--accent-text); }
+nav.menu .menu-logout { margin-top: 14px; border-top: 1px solid var(--line); border-radius: 0; padding-top: 14px; }
+nav.menu .menu-logout:hover { color: var(--bad); background: transparent; }
 .sidebar .sync-foot { padding: 10px 14px; border-top: 1px solid var(--line); font-size: 0.75rem; color: var(--muted); }
 
 /* foto de perfil (sidebar/gaveta) */
