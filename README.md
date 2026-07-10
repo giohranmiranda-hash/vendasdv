@@ -1,5 +1,7 @@
 # ❄️ Ice Sistema — SaaS de gestão para negócios gelados
 
+**🌐 Produção: https://icesistema.netlify.app**
+
 Sistema de gestão **multi-empresa (multi-tenant) e white-label** para negócios de gelo
 saborizado, sorvete, picolé e bebidas geladas. Cada cliente que assina cria a própria
 conta, tem os dados **isolados** e personaliza tudo: nome, logo, cor, sabores, receitas,
