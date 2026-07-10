@@ -12,6 +12,15 @@ const Assistant = {
     const today = U.todayStr();
     const ym = U.monthStr();
 
+    // assinatura vencendo/vencida
+    const subDays = Cloud.subDaysLeft(App.subscription);
+    if (subDays != null && subDays <= 5) out.push({
+      kind: subDays < 0 ? "bad" : "warn", icon: "💎",
+      title: subDays < 0 ? "Assinatura vencida" : `Assinatura vence em ${subDays} dia(s)`,
+      text: "Renove pra manter seus dados sincronizados na nuvem.",
+      action: { label: "Renovar agora", go: "assinatura" },
+    });
+
     // entregas de hoje
     const todayDel = st.deliveries.filter((d) => !d.done && d.date === today);
     if (todayDel.length) out.push({

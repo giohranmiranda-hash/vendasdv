@@ -130,6 +130,44 @@ const Cloud = {
     return { state: localState, source: "local" };
   },
 
+  /* ---------- assinatura (dias restantes) ----------
+     Lê a tabela subscriptions (RLS: só a própria linha). O resultado é
+     cacheado no aparelho pra mostrar o status mesmo offline. A escrita é
+     feita pelo dono do SaaS (painel) ou pelo webhook do Mercado Pago. */
+  subCacheKey(uid) { return "ice_sub_" + uid; },
+
+  async fetchSubscription() {
+    const s = await Cloud.refreshIfNeeded();
+    if (!s) return Cloud.cachedSubscription();
+    try {
+      const res = await fetch(
+        ICE_CONFIG.SUPABASE_URL + "/rest/v1/subscriptions?select=paid_until,plan&user_id=eq." + s.user.id,
+        { headers: Cloud.headers(s.access_token) }
+      );
+      if (!res.ok) throw new Error("subscriptions " + res.status);
+      const rows = await res.json();
+      const sub = rows.length ? { paidUntil: rows[0].paid_until, plan: rows[0].plan, fetchedAt: Date.now() } : { none: true, fetchedAt: Date.now() };
+      localStorage.setItem(Cloud.subCacheKey(s.user.id), JSON.stringify(sub));
+      return sub;
+    } catch (e) {
+      console.warn("fetchSubscription", e);
+      return Cloud.cachedSubscription();
+    }
+  },
+
+  cachedSubscription() {
+    const s = Cloud.session();
+    if (!s) return null;
+    try { return JSON.parse(localStorage.getItem(Cloud.subCacheKey(s.user.id)) || "null"); }
+    catch (e) { return null; }
+  },
+
+  // dias restantes (negativo = vencida); null = sem info/uso offline
+  subDaysLeft(sub) {
+    if (!sub || sub.none || !sub.paidUntil) return null;
+    return U.daysBetween(U.todayStr(), String(sub.paidUntil).slice(0, 10));
+  },
+
   /* ---------- sync contínuo (debounce após cada alteração) ---------- */
   scheduleSync() {
     if (!Cloud.enabled() || !Cloud.session()) return;

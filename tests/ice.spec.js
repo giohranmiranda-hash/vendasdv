@@ -386,7 +386,56 @@ test("assinatura: mostra plano, PIX copiável e botão de pagamento quando confi
 test("assinatura sem configuração: instrui o dono do sistema", async ({ page }) => {
   await bootWithTemplate(page);
   await page.evaluate(() => App.go("assinatura"));
-  await expect(page.locator("#view .banner.info")).toContainText("Pagamento ainda não configurado");
+  await expect(page.locator("#view")).toContainText("Pagamento ainda não configurado");
+});
+
+test("menu integrado: 7 seções, sub-abas aparecem e lembram a última visitada", async ({ page }) => {
+  await bootWithTemplate(page);
+  // menu principal enxuto
+  const count = await page.locator("#menu-desktop [data-nav]").count();
+  expect(count).toBe(7);
+  // seção Produção abre com sub-abas (4 telas)
+  await page.click('#menu-desktop [data-nav="producao"]');
+  await expect(page.locator("#subtabs")).toBeVisible();
+  expect(await page.locator("#subtabs [data-sub]").count()).toBe(4);
+  // navega pra Estoque pela sub-aba
+  await page.click('#subtabs [data-sub="estoque"]');
+  await expect(page.locator("#view h2")).toContainText("Estoque");
+  // sai pra outra seção e volta → lembra que estava em Estoque
+  await page.click('#menu-desktop [data-nav="inicio"]');
+  await expect(page.locator("#view h2")).toContainText("Dashboard");
+  await page.click('#menu-desktop [data-nav="producao"]');
+  await expect(page.locator("#view h2")).toContainText("Estoque");
+  // seção de tela única não mostra sub-abas
+  await page.click('#menu-desktop [data-nav="assistente"]');
+  await expect(page.locator("#subtabs")).toBeHidden();
+});
+
+test("assinatura: mostra dias restantes (ativa, vencendo e vencida)", async ({ page }) => {
+  await bootWithTemplate(page);
+  // simula sessão na nuvem + assinatura paga por mais 12 dias
+  await page.evaluate(() => {
+    Cloud.session = () => ({ user: { id: "t1", email: "teste@empresa.com" }, access_token: "x" });
+    App.subscription = { paidUntil: U.addDays(U.todayStr(), 12) };
+    App.go("assinatura");
+  });
+  await expect(page.locator("#view")).toContainText("ATIVA");
+  await expect(page.locator("#view")).toContainText("12 dia(s) restante(s)");
+  // vencendo (3 dias) → badge VENCENDO e sugestão no assistente
+  const sug = await page.evaluate(() => {
+    App.subscription = { paidUntil: U.addDays(U.todayStr(), 3) };
+    App.render();
+    return Assistant.suggestions(App.state).some((s) => s.icon === "💎");
+  });
+  await expect(page.locator("#view")).toContainText("VENCENDO");
+  expect(sug).toBe(true);
+  // vencida
+  await page.evaluate(() => {
+    App.subscription = { paidUntil: U.addDays(U.todayStr(), -2) };
+    App.render();
+  });
+  await expect(page.locator("#view")).toContainText("VENCIDA");
+  await expect(page.locator("#view")).toContainText("Venceu há 2 dia(s)");
 });
 
 test("sem nuvem configurada: login esconde formulário e oferece offline", async ({ page }) => {

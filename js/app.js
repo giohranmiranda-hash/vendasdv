@@ -17,13 +17,27 @@ const App = {
     { id: "receitas", icon: "📖", label: "Receitas", render: () => ViewReceitas.render() },
     { id: "mapa", icon: "🗺️", label: "Logística", render: () => ViewMapa.render() },
     { id: "assistente", icon: "🤖", label: "Assistente", render: () => ViewAssistente.render() },
-    { id: "financeiro", icon: "🏦", label: "Financeiro", render: () => ViewFinanceiro.render() },
+    { id: "financeiro", icon: "🏦", label: "Caixa", render: () => ViewFinanceiro.render() },
     { id: "relatorios", icon: "📈", label: "Relatórios", render: () => ViewExtras.renderRelatorios() },
     { id: "metas", icon: "🏁", label: "Metas & Comissões", render: () => ViewExtras.renderMetas() },
     { id: "calendario", icon: "📅", label: "Calendário", render: () => ViewExtras.renderCalendario() },
     { id: "assinatura", icon: "💎", label: "Assinatura", render: () => ViewAssinatura.render() },
     { id: "config", icon: "⚙️", label: "Configurações", render: () => ViewConfig.render() },
   ],
+
+  // menu enxuto: 7 seções integradas; as telas viram sub-abas dentro da seção
+  groups: [
+    { id: "inicio", icon: "📊", label: "Início", views: ["dashboard", "calendario"] },
+    { id: "vendas", icon: "💰", label: "Vendas", views: ["vendas", "leads", "clientes"] },
+    { id: "producao", icon: "🏭", label: "Produção", views: ["producao", "estoque", "insumos", "receitas"] },
+    { id: "logistica", icon: "🗺️", label: "Logística", views: ["mapa"] },
+    { id: "financeiro", icon: "🏦", label: "Financeiro", views: ["financeiro", "metas", "relatorios"] },
+    { id: "assistente", icon: "🤖", label: "Assistente IA", views: ["assistente"] },
+    { id: "config", icon: "⚙️", label: "Configurações", views: ["config", "assinatura"] },
+  ],
+  groupOf(viewId) {
+    return App.groups.find((g) => g.views.includes(viewId)) || App.groups[0];
+  },
 
   /* ---------- persistência ---------- */
   save(opts) {
@@ -66,20 +80,42 @@ const App = {
 
   /* ---------- navegação ---------- */
   renderMenu() {
-    const mk = (v) =>
-      `<button data-nav="${v.id}" class="${App.currentView === v.id ? "on" : ""}">` +
-      `<span class="mi">${v.icon}</span><span>${U.esc(v.label)}</span></button>`;
-    U.$("#menu-desktop").innerHTML = App.views.map(mk).join("");
-    U.$("#menu-drawer").innerHTML = App.views.map(mk).join("");
-    U.$$("[data-nav]").forEach((b) => (b.onclick = () => App.go(b.dataset.nav)));
+    const cur = App.groupOf(App.currentView);
+    const mk = (g) =>
+      `<button data-nav="${g.id}" class="${cur.id === g.id ? "on" : ""}">` +
+      `<span class="mi">${g.icon}</span><span>${U.esc(g.label)}</span></button>`;
+    U.$("#menu-desktop").innerHTML = App.groups.map(mk).join("");
+    U.$("#menu-drawer").innerHTML = App.groups.map(mk).join("");
+    U.$$("[data-nav]").forEach((b) => (b.onclick = () => App.goGroup(b.dataset.nav)));
+    App.renderSubtabs();
+  },
+
+  // sub-abas da seção atual (só aparecem quando a seção tem mais de uma tela)
+  renderSubtabs() {
+    const g = App.groupOf(App.currentView);
+    const box = U.$("#subtabs");
+    if (g.views.length < 2) { box.innerHTML = ""; box.style.display = "none"; return; }
+    box.style.display = "flex";
+    box.innerHTML = g.views.map((vid) => {
+      const v = App.views.find((x) => x.id === vid);
+      return `<button data-sub="${v.id}" class="${App.currentView === v.id ? "on" : ""}">${v.icon} ${U.esc(v.label)}</button>`;
+    }).join("");
+    U.$$("[data-sub]", box).forEach((b) => (b.onclick = () => App.go(b.dataset.sub)));
   },
 
   openDrawer(open) {
     document.body.classList.toggle("drawer-open", open);
   },
 
+  goGroup(groupId) {
+    const g = App.groups.find((x) => x.id === groupId) || App.groups[0];
+    // lembra a última sub-aba visitada da seção
+    App.go(App.viewState["grp-" + g.id] || g.views[0]);
+  },
+
   go(viewId) {
     App.currentView = viewId;
+    App.viewState["grp-" + App.groupOf(viewId).id] = viewId;
     App.openDrawer(false);
     App.renderMenu();
     App.render();
@@ -131,6 +167,16 @@ const App = {
     if (!App.state.settings.onboarded) App.onboarding();
     else App.render();
     if (rec.source === "cloud") UI.toast("Dados carregados da nuvem ☁️", "ok");
+    // status da assinatura (dias restantes) — atualiza sozinho a cada entrada
+    App.subscription = Cloud.cachedSubscription();
+    Cloud.fetchSubscription().then((sub) => {
+      App.subscription = sub;
+      const days = Cloud.subDaysLeft(sub);
+      if (days != null && days <= 5)
+        UI.toast(days < 0 ? "⚠️ Sua assinatura venceu — renove na aba Assinatura."
+          : `⏳ Sua assinatura vence em ${days} dia(s).`, days < 0 ? "bad" : "");
+      if (App.currentView === "assinatura") App.render();
+    });
   },
 
   logoutApp() {

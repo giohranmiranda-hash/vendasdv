@@ -106,6 +106,21 @@ nav.menu button.on { background: var(--accent-soft); color: var(--accent-text); 
 
 main#view { flex: 1; padding: 20px 22px 90px; max-width: 1200px; width: 100%; margin: 0 auto; min-width: 0; }
 
+/* sub-abas dentro da seção */
+.subtabs {
+  display: flex; gap: 6px; flex-wrap: nowrap; overflow-x: auto;
+  max-width: 1200px; width: 100%; margin: 0 auto;
+  padding: 14px 22px 0; scrollbar-width: none; -webkit-overflow-scrolling: touch;
+}
+.subtabs::-webkit-scrollbar { display: none; }
+.subtabs button {
+  flex-shrink: 0; background: var(--card); border: 1px solid var(--line); color: var(--muted);
+  padding: 7px 14px; border-radius: 999px; font-weight: 600; font-size: 0.85rem;
+  transition: background 0.18s, color 0.18s, border-color 0.18s;
+}
+.subtabs button.on { background: var(--accent-soft); color: var(--accent-text); border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
+@media (max-width: 899px) { .subtabs { padding: 12px 12px 0; } }
+
 /* topbar mobile + gaveta (☰) */
 .topbar { display: none; }
 #drawer, #drawer-back { display: none; }

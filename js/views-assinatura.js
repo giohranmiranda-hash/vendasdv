@@ -8,6 +8,30 @@
 const ViewAssinatura = {
   plan() { return (window.ICE_CONFIG && ICE_CONFIG.PLAN) || {}; },
 
+  // card de status: dias restantes, com barra e cores
+  statusHtml() {
+    const sess = Cloud.session();
+    if (!sess) return `<div class="banner info">📴 Você está no modo offline (sem conta na nuvem) — a assinatura vale para contas com login.</div>`;
+    const sub = App.subscription;
+    const days = Cloud.subDaysLeft(sub);
+    if (sub == null) return `<div class="banner info">☁️ Consultando status da assinatura…</div>`;
+    if (sub.none || days == null) return `<div class="banner warn">🔎 Nenhuma assinatura registrada ainda pra esta conta. Faça o pagamento abaixo — assim que for confirmado, o status atualiza sozinho aqui.</div>`;
+    const total = 30;
+    const pct = U.clamp((days / total) * 100, 0, 100);
+    const cls = days < 0 ? "bad" : days <= 5 ? "warn" : "ok";
+    const msg = days < 0
+      ? `Venceu há ${-days} dia(s) — renove pra manter a nuvem ativa.`
+      : days === 0 ? "Vence HOJE — renove pra não perder o acesso."
+      : `${days} dia(s) restante(s) · paga até ${U.fmtDate(String(sub.paidUntil).slice(0, 10))}`;
+    return `<div class="card mb" style="border-color:var(--${cls === "ok" ? "ok" : cls === "warn" ? "warn" : "bad"})">
+      <div class="flex spread"><h3 style="margin:0">📆 Status da assinatura</h3>
+        <span class="badge ${cls}" style="font-size:.85rem">${days < 0 ? "VENCIDA" : days <= 5 ? "VENCENDO" : "ATIVA"}</span></div>
+      <div class="hbar-track mt" style="height:16px"><div class="hbar-fill" style="width:${pct}%;background:var(--${cls === "ok" ? "ok" : cls === "warn" ? "warn" : "bad"})"></div></div>
+      <div class="small mt">${msg}</div>
+      <div class="muted small mt">Confirmou um pagamento agora? <a href="#" id="sub-refresh">Atualizar status</a> — também atualiza sozinho a cada vez que você entra no app.</div>
+    </div>`;
+  },
+
   render() {
     const v = U.$("#view");
     const p = ViewAssinatura.plan();
@@ -16,7 +40,7 @@ const ViewAssinatura = {
 
     v.innerHTML = `
       <div class="view-head"><h2>💎 Assinatura</h2></div>
-
+      ${ViewAssinatura.statusHtml()}
       <div class="grid g2">
         <div class="card" style="border-color:color-mix(in srgb, var(--accent) 45%, var(--line))">
           <div class="flex spread">
@@ -59,6 +83,14 @@ const ViewAssinatura = {
         </div>
       </div>`;
 
+    const refresh = U.$("#sub-refresh");
+    if (refresh) refresh.onclick = async (e) => {
+      e.preventDefault();
+      refresh.textContent = "Consultando…";
+      App.subscription = await Cloud.fetchSubscription();
+      App.render();
+      UI.toast("Status da assinatura atualizado ☁️", "ok");
+    };
     if (p.paymentLink) U.$("#pay-link").onclick = () => window.open(p.paymentLink, "_blank");
     if (p.pixKey) U.$("#pay-pix-copy").onclick = async () => {
       try { await navigator.clipboard.writeText(p.pixKey); UI.toast("Chave PIX copiada 📋", "ok"); }

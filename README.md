@@ -76,6 +76,28 @@ em [`js/config.js`](js/config.js), no bloco `PLAN`:
 - `whatsapp` — seu número (com DDI, ex `5511999998888`) pra receber comprovante/suporte
 - `name`, `price`, `benefits` — texto do plano
 
+### Dias restantes + renovação automática
+
+O `supabase.sql` cria a tabela **`subscriptions`** (cada conta nova já ganha **7 dias de
+teste grátis**). O app lê essa tabela e mostra na aba Assinatura o status ATIVA/VENCENDO/
+VENCIDA com **quantos dias restam**, avisa quando faltam ≤5 dias e atualiza sozinho a cada
+entrada no app (com botão "Atualizar status" pra consultar na hora).
+
+Pra **renovar automaticamente quando o pagamento confirma** (Mercado Pago):
+
+1. Instale a CLI do Supabase e faça deploy da função:
+   ```bash
+   supabase functions deploy mp-webhook --no-verify-jwt
+   supabase secrets set MP_ACCESS_TOKEN=APP_USR-seu-token-do-mercado-pago
+   ```
+2. No painel do Mercado Pago → **Suas integrações → Webhooks**, cadastre o evento
+   "Pagamentos" apontando para `https://SEUPROJETO.supabase.co/functions/v1/mp-webhook`.
+3. Pronto: pagamento aprovado → +30 dias somados ao vencimento, sozinho. O pagador deve
+   usar o **mesmo email do login** no app (é assim que a função localiza a conta).
+
+**Alternativa manual (PIX):** recebeu o comprovante? No painel do Supabase → Table Editor →
+`subscriptions`, ajuste o `paid_until` do cliente. O app dele atualiza no próximo acesso.
+
 **Corte de acesso de quem não paga:** no painel do Supabase → **Authentication → Users**,
 banir/desativar o usuário bloqueia o login na nuvem. Os dados ficam guardados e voltam
 quando a assinatura reativar.
