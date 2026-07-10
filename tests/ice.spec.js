@@ -438,6 +438,36 @@ test("assinatura: mostra dias restantes (ativa, vencendo e vencida)", async ({ p
   await expect(page.locator("#view")).toContainText("Venceu há 2 dia(s)");
 });
 
+test("foto de perfil: upload abre editor, corta e aparece na barra lateral", async ({ page }) => {
+  await bootWithTemplate(page);
+  await page.evaluate(() => App.go("config"));
+  // 1x1 png vermelho
+  const png = Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+    "base64");
+  const [chooser] = await Promise.all([
+    page.waitForEvent("filechooser"),
+    page.click("#cfg-ava-edit"),
+  ]);
+  await chooser.setFiles({ name: "avatar.png", mimeType: "image/png", buffer: png });
+  // editor abre com canvas e zoom
+  await expect(page.locator("#imged-cv")).toBeVisible();
+  await expect(page.locator("#imged-zoom")).toBeVisible();
+  await page.click('[data-a="s"]'); // "Usar imagem"
+  const photo = await page.evaluate(() => App.state.settings.profile.photo);
+  expect(photo).toMatch(/^data:image/);
+  // avatar visível na sidebar
+  await expect(page.locator("#profile-side")).toBeVisible();
+  await expect(page.locator("#profile-side .ava img")).toBeVisible();
+  // nome do perfil salvo junto
+  await page.fill("#cfg-pname", "Giohran");
+  await page.click("#cfg-save");
+  await expect(page.locator("#profile-side .pname")).toHaveText("Giohran");
+  // persiste após recarregar
+  await page.reload();
+  await expect(page.locator("#profile-side .pname")).toHaveText("Giohran");
+});
+
 test("sem nuvem configurada: login esconde formulário e oferece offline", async ({ page }) => {
   await page.goto("/index.html");
   await expect(page.locator("#login-form")).toBeHidden();

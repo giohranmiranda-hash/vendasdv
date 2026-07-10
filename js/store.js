@@ -29,6 +29,7 @@ const Store = {
         cobranca: "Oi {nome}, tudo bem? Passando pra lembrar do valor em aberto de {valor}. Pode acertar quando puder 🙏",
       },
       locationIqKey: "", // geocodificador preciso opcional, por tenant
+      profile: { name: "", photo: "" }, // foto de perfil do dono/usuário (dataURL)
       onboarded: false,
     };
   },

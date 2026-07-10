@@ -71,6 +71,82 @@ const UI = {
   },
   activeItems() { return App.state.catalog.filter((c) => !c.archived); },
 
+  /* Editor de imagem (foto de perfil / logo): zoom + arrastar pra enquadrar.
+     UI.imageEditor(dataUrl, {round:true, size:256, title}, (croppedDataUrl)=>{}) */
+  imageEditor(dataUrl, opts, cb) {
+    opts = opts || {};
+    const CS = 260, OUT = opts.size || 256;
+    const m = UI.modal(`
+      <h3>${U.esc(opts.title || "Ajustar imagem")}</h3>
+      <div class="muted small mb">Arraste pra posicionar e use o controle pra dar zoom.</div>
+      <div style="display:flex;justify-content:center">
+        <canvas id="imged-cv" width="${CS}" height="${CS}"
+          style="border-radius:${opts.round ? "50%" : "16px"};border:2px solid var(--accent);cursor:grab;touch-action:none;max-width:100%"></canvas>
+      </div>
+      <label>Zoom</label>
+      <input type="range" id="imged-zoom" min="100" max="300" value="100" style="width:100%"/>
+      <div class="m-actions">
+        <button class="btn" data-a="c">Cancelar</button>
+        <button class="btn primary" data-a="s">✅ Usar imagem</button>
+      </div>`, { sticky: true });
+
+    const cv = U.$("#imged-cv", m.el), ctx = cv.getContext("2d");
+    const img = new Image();
+    let zoom = 1, ox = 0, oy = 0, drag = null;
+
+    const draw = () => {
+      ctx.clearRect(0, 0, CS, CS);
+      ctx.fillStyle = "#12161d";
+      ctx.fillRect(0, 0, CS, CS);
+      if (!img.width) return;
+      const s0 = Math.max(CS / img.width, CS / img.height);
+      const s = s0 * zoom;
+      const w = img.width * s, h = img.height * s;
+      // limita o deslocamento pra imagem nunca sair do quadro
+      const maxX = (w - CS) / 2, maxY = (h - CS) / 2;
+      ox = U.clamp(ox, -maxX, maxX);
+      oy = U.clamp(oy, -maxY, maxY);
+      ctx.drawImage(img, (CS - w) / 2 + ox, (CS - h) / 2 + oy, w, h);
+    };
+    img.onload = draw;
+    img.src = dataUrl;
+
+    U.$("#imged-zoom", m.el).addEventListener("input", (e) => { zoom = Number(e.target.value) / 100; draw(); });
+    cv.addEventListener("pointerdown", (e) => { drag = { x: e.clientX, y: e.clientY }; cv.setPointerCapture(e.pointerId); cv.style.cursor = "grabbing"; });
+    cv.addEventListener("pointermove", (e) => {
+      if (!drag) return;
+      ox += e.clientX - drag.x; oy += e.clientY - drag.y;
+      drag = { x: e.clientX, y: e.clientY };
+      draw();
+    });
+    cv.addEventListener("pointerup", () => { drag = null; cv.style.cursor = "grab"; });
+
+    U.$('[data-a="c"]', m.el).onclick = m.close;
+    U.$('[data-a="s"]', m.el).onclick = () => {
+      const out = document.createElement("canvas");
+      out.width = OUT; out.height = OUT;
+      const octx = out.getContext("2d");
+      octx.drawImage(cv, 0, 0, CS, CS, 0, 0, OUT, OUT);
+      m.close();
+      cb(out.toDataURL("image/jpeg", 0.88));
+    };
+  },
+
+  // abre seletor de arquivo → editor → callback com a imagem cortada
+  pickAndEditImage(opts, cb) {
+    const inp = document.createElement("input");
+    inp.type = "file";
+    inp.accept = "image/*";
+    inp.onchange = () => {
+      const f = inp.files[0];
+      if (!f) return;
+      const rd = new FileReader();
+      rd.onload = () => UI.imageEditor(rd.result, opts, cb);
+      rd.readAsDataURL(f);
+    };
+    inp.click();
+  },
+
   // contador animado nos KPIs: <div class="k-value" data-countup="1234.5" data-fmt="money">
   animateCounters(root) {
     if (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) return;

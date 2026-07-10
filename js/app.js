@@ -61,6 +61,21 @@ const App = {
     U.$("#brand-tag").textContent = s.tagline || "";
     U.$("#brand-tag-d").textContent = s.tagline || "";
     document.title = name + " — Ice Sistema";
+
+    // foto de perfil (sidebar + gaveta)
+    const prof = s.profile || {};
+    const sess = Cloud.session();
+    const pname = prof.name || (sess && sess.user.email) || "";
+    for (const rowId of ["profile-side", "profile-drawer"]) {
+      const row = U.$("#" + rowId);
+      if (!row) continue;
+      if (!prof.photo && !pname) { row.style.display = "none"; continue; }
+      row.style.display = "flex";
+      U.$("[data-ava]", row).innerHTML = prof.photo
+        ? `<img src="${U.esc(prof.photo)}" alt="perfil">`
+        : U.esc((pname[0] || "👤").toUpperCase());
+      U.$("[data-pname]", row).textContent = pname;
+    }
   },
 
   setSyncStatus(st) {

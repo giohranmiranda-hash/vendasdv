@@ -30,6 +30,21 @@ const ViewConfig = {
         </div>
 
         <div class="card">
+          <h3>👤 Seu perfil</h3>
+          <div class="flex" style="align-items:center">
+            <span class="ava" id="cfg-ava" style="width:64px;height:64px;border-radius:50%;overflow:hidden;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;font-size:30px;border:2px solid color-mix(in srgb, var(--accent) 55%, transparent);flex-shrink:0">
+              ${s.profile && s.profile.photo ? `<img src="${U.esc(s.profile.photo)}" style="width:100%;height:100%;object-fit:cover">` : "👤"}
+            </span>
+            <div style="flex:1;min-width:150px">
+              <button class="btn small" id="cfg-ava-edit">📷 ${s.profile && s.profile.photo ? "Editar foto" : "Adicionar foto"}</button>
+              ${s.profile && s.profile.photo ? `<button class="btn small ghost danger" id="cfg-ava-rm">Remover</button>` : ""}
+            </div>
+          </div>
+          <label>Seu nome</label><input id="cfg-pname" value="${U.esc((s.profile && s.profile.name) || "")}" placeholder="Como você quer aparecer" maxlength="40"/>
+          <div class="muted small mt">Aparece na barra lateral e no menu do celular.</div>
+        </div>
+
+        <div class="card">
           <h3>🏠 Endereço da fábrica/depósito</h3>
           <div class="muted small">Usado como centro do mapa de logística e para escolher o resultado certo na geocodificação.</div>
           <label>CEP</label><input id="cfg-cep" value="${U.esc(s.address.cep || "")}" placeholder="00000-000"/>
@@ -111,23 +126,27 @@ const ViewConfig = {
       const f = e.target.files[0];
       if (!f) return;
       const rd = new FileReader();
-      rd.onload = () => {
-        // redimensiona pra ~128px pra não inchar o app_state
-        const img = new Image();
-        img.onload = () => {
-          const c = document.createElement("canvas");
-          const sz = 128; c.width = sz; c.height = sz;
-          const scale = Math.max(sz / img.width, sz / img.height);
-          const w = img.width * scale, h = img.height * scale;
-          c.getContext("2d").drawImage(img, (sz - w) / 2, (sz - h) / 2, w, h);
-          const url = c.toDataURL("image/png");
-          App.state.settings.logo = { type: "image", value: url };
-          U.$("#cfg-logo-prev").innerHTML = `<img src="${url}" style="width:100%;height:100%;object-fit:cover">`;
-          U.$("#cfg-logo-emoji").value = "";
-        };
-        img.src = rd.result;
-      };
+      rd.onload = () => UI.imageEditor(rd.result, { title: "Ajustar logo", size: 128 }, (url) => {
+        App.state.settings.logo = { type: "image", value: url };
+        U.$("#cfg-logo-prev").innerHTML = `<img src="${url}" style="width:100%;height:100%;object-fit:cover">`;
+        U.$("#cfg-logo-emoji").value = "";
+      });
       rd.readAsDataURL(f);
+      e.target.value = "";
+    };
+
+    // foto de perfil: seleciona → editor (zoom/arrastar, corte redondo) → salva
+    U.$("#cfg-ava-edit").onclick = () => UI.pickAndEditImage({ title: "Editar foto de perfil", round: true, size: 256 }, (url) => {
+      App.state.settings.profile = App.state.settings.profile || { name: "", photo: "" };
+      App.state.settings.profile.photo = url;
+      App.applyBranding();
+      App.save();
+      UI.toast("Foto de perfil atualizada 📷", "ok");
+    });
+    if (U.$("#cfg-ava-rm")) U.$("#cfg-ava-rm").onclick = () => {
+      App.state.settings.profile.photo = "";
+      App.applyBranding();
+      App.save();
     };
     U.$("#cfg-accent-reset").onclick = () => { U.$("#cfg-accent").value = "#d4af37"; };
 
@@ -186,6 +205,8 @@ const ViewConfig = {
       s.tagline = U.$("#cfg-tag").value.trim();
       const emoji = U.$("#cfg-logo-emoji").value.trim();
       if (emoji) s.logo = { type: "emoji", value: emoji };
+      s.profile = s.profile || { name: "", photo: "" };
+      s.profile.name = U.$("#cfg-pname").value.trim();
       s.accent = U.$("#cfg-accent").value;
       s.address.cep = U.$("#cfg-cep").value.trim();
       s.address.text = U.$("#cfg-addr").value.trim();
