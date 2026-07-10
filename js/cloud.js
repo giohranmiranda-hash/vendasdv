@@ -79,6 +79,30 @@ const Cloud = {
 
   logout() { Cloud.saveSession(null); },
 
+  // link de confirmação de email/recuperação: o GoTrue redireciona pro site
+  // com #access_token=...&refresh_token=... — cria a sessão e loga direto
+  async sessionFromHash() {
+    const h = new URLSearchParams(location.hash.slice(1));
+    const at = h.get("access_token"), rt = h.get("refresh_token");
+    history.replaceState(null, "", location.pathname + location.search); // limpa o token da URL
+    if (!at || !rt) return null;
+    try {
+      const res = await fetch(ICE_CONFIG.SUPABASE_URL + "/auth/v1/user", { headers: Cloud.headers(at) });
+      if (!res.ok) return null;
+      const user = await res.json();
+      const s = {
+        access_token: at, refresh_token: rt,
+        expires_at: Date.now() + ((Number(h.get("expires_in")) || 3600) - 120) * 1000,
+        user: { id: user.id, email: user.email },
+      };
+      Cloud.saveSession(s);
+      return s;
+    } catch (e) {
+      console.warn("sessionFromHash", e);
+      return null;
+    }
+  },
+
   /* ---------- dados (tabela app_state) ---------- */
   async fetchCloud() {
     const s = await Cloud.refreshIfNeeded();

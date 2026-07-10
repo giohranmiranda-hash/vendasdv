@@ -262,6 +262,18 @@ const App = {
       U.$("#login-nocloud").style.display = "block";
     }
 
+    // veio do link de confirmação de email? loga direto (sem digitar senha)
+    if (hasCloud && /access_token=/.test(location.hash)) {
+      Cloud.sessionFromHash().then((s) => {
+        if (s) {
+          localStorage.removeItem("ice_offline_mode");
+          UI.toast("Email confirmado — bem-vindo! 🎉", "ok");
+          App.enterCloud();
+        } else location.reload(); // hash inválido/expirado → tela de login normal
+      });
+      return;
+    }
+
     // sessão nuvem existente → entra direto
     if (hasCloud && Cloud.session()) { App.enterCloud(); return; }
     // modo offline já escolhido antes → entra direto
