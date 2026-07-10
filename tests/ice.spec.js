@@ -469,8 +469,22 @@ test("foto de perfil: upload abre editor, corta e aparece na barra lateral", asy
 });
 
 test("sem nuvem configurada: login esconde formulário e oferece offline", async ({ page }) => {
+  // simula instalação sem credenciais, independente do config.js real
+  await page.addInitScript(() => {
+    const fake = { SUPABASE_URL: "", SUPABASE_ANON_KEY: "", PLAN: {} };
+    Object.defineProperty(window, "ICE_CONFIG", { get: () => fake, set: () => {} });
+  });
   await page.goto("/index.html");
   await expect(page.locator("#login-form")).toBeHidden();
   await expect(page.locator("#login-nocloud")).toBeVisible();
   await expect(page.locator("#btn-offline")).toBeVisible();
+});
+
+test("com nuvem configurada: login mostra formulário de email/senha", async ({ page }) => {
+  await page.goto("/index.html");
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  await expect(page.locator("#login-form")).toBeVisible();
+  await expect(page.locator("#btn-login")).toBeVisible();
+  await expect(page.locator("#btn-signup")).toBeVisible();
 });

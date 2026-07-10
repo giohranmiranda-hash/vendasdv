@@ -10,7 +10,7 @@
    ===================================================================== */
 window.ICE_CONFIG = {
   SUPABASE_URL: "https://nvrdqiklksarfxuwoznx.supabase.co", // projeto SDV VENDA (sa-east-1)
-  SUPABASE_ANON_KEY: "", // ← cole aqui a chave "anon public" (Settings → API Keys),
+  SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im52cmRxaWtsa3NhcmZ4dXdvem54Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM3MTM1NTYsImV4cCI6MjA5OTI4OTU1Nn0.ROUCNAKgTtnLR-oAHNrGdHoeWdr3rtxPNpqNmikO0zk", // anon key pública (RLS protege os dados),
 
   /* ------ Assinatura (tela 💎 Assinatura) ------
      Como o app é 100% estático, a cobrança usa link de pagamento externo
