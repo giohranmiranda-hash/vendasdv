@@ -385,7 +385,13 @@ test("assinatura: mostra plano, PIX copiável e botão de pagamento quando confi
 
 test("assinatura sem configuração: instrui o dono do sistema", async ({ page }) => {
   await bootWithTemplate(page);
-  await page.evaluate(() => App.go("assinatura"));
+  // simula instalação sem métodos de pagamento, independente do config.js real
+  await page.evaluate(() => {
+    ICE_CONFIG.PLAN.paymentLink = "";
+    ICE_CONFIG.PLAN.pixKey = "";
+    ICE_CONFIG.PLAN.whatsapp = "";
+    App.go("assinatura");
+  });
   await expect(page.locator("#view")).toContainText("Pagamento ainda não configurado");
 });
 
