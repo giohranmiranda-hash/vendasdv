@@ -50,9 +50,10 @@ const ViewConfig = {
           <label>CEP</label><input id="cfg-cep" value="${U.esc(s.address.cep || "")}" placeholder="00000-000"/>
           <label>Endereço completo</label><input id="cfg-addr" value="${U.esc(s.address.text || "")}" placeholder="Rua, número, bairro, cidade - UF"/>
           <div class="flex mt">
-            <button class="btn small primary" id="cfg-geo">📍 Localizar no mapa</button>
-            <span class="muted small" id="cfg-geo-st">${s.address.lat != null ? "✅ Localizado (" + s.address.lat.toFixed(4) + ", " + s.address.lng.toFixed(4) + ")" : "⚠️ Ainda sem coordenada"}</span>
+            <button class="btn small primary" id="cfg-geo">📍 Localizar pelo endereço</button>
+            <button class="btn small" id="cfg-gps">🛰️ Usar minha localização</button>
           </div>
+          <div class="muted small mt" id="cfg-geo-st">${s.address.lat != null ? "✅ Localizado (" + s.address.lat.toFixed(4) + ", " + s.address.lng.toFixed(4) + ")" : "⚠️ Ainda sem coordenada — use um dos botões acima ou arraste o pino 🏠 no mapa"}</div>
         </div>
 
         <div class="card">
@@ -162,6 +163,24 @@ const ViewConfig = {
       } else {
         st.textContent = "❌ Não achei — confira o endereço/CEP ou arraste o pino da fábrica no mapa.";
       }
+    };
+
+    // GPS: define a posição da fábrica pela localização atual do aparelho
+    U.$("#cfg-gps").onclick = () => {
+      const st2 = U.$("#cfg-geo-st");
+      if (!navigator.geolocation) { st2.textContent = "❌ Este navegador não tem GPS/geolocalização."; return; }
+      st2.textContent = "🛰️ Obtendo sua localização… (autorize no navegador)";
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          App.state.settings.address.lat = pos.coords.latitude;
+          App.state.settings.address.lng = pos.coords.longitude;
+          App.save({ rerender: false });
+          st2.textContent = `✅ Localizado pelo GPS (${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}) — ajuste fino arrastando o pino 🏠 no mapa.`;
+          UI.toast("Fábrica posicionada pela sua localização 🛰️", "ok");
+        },
+        (err) => { st2.textContent = "❌ Não consegui sua localização (" + err.message + "). Autorize o acesso ou use o endereço."; },
+        { enableHighAccuracy: true, timeout: 12000 }
+      );
     };
 
     U.$("#cfg-add-item").onclick = () => ViewConfig.editItem(null);

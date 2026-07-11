@@ -70,11 +70,25 @@ const ViewMapa = {
     if (ViewMapa.map) { try { ViewMapa.map.remove(); } catch (e) {} ViewMapa.map = null; }
     const anc = Geo.anchor();
     const map = L.map("map-canvas", { zoomControl: true }).setView([anc.lat, anc.lng], anc.weak ? 4 : 12);
-    // tiles claros com ruas legíveis (nunca tema escuro aqui)
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    // tiles claros com ruas legíveis (nunca tema escuro aqui);
+    // se o OSM falhar (bloqueio/lentidão), troca sozinho pro CARTO
+    const osm = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       maxZoom: 19,
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
     }).addTo(map);
+    let tileErrors = 0;
+    osm.on("tileerror", () => {
+      tileErrors++;
+      if (tileErrors >= 3 && !ViewMapa._tilesFallback) {
+        ViewMapa._tilesFallback = true;
+        try { map.removeLayer(osm); } catch (e) {}
+        L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+          maxZoom: 19, subdomains: "abcd",
+          attribution: '&copy; OpenStreetMap &copy; CARTO',
+        }).addTo(map);
+        console.warn("tiles OSM falharam — usando CARTO");
+      }
+    });
     ViewMapa.map = map;
     ViewMapa.markers = [];
 

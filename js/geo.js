@@ -33,10 +33,17 @@ const Geo = {
     return m ? m[1] + m[2] : null;
   },
 
+  // fetch com timeout de 10s — geocodificador lento não pode travar o app
   async fetchJson(url, opts) {
-    const res = await fetch(url, opts);
-    if (!res.ok) throw new Error(url + " → " + res.status);
-    return res.json();
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), 10000);
+    try {
+      const res = await fetch(url, { ...(opts || {}), signal: ctl.signal });
+      if (!res.ok) throw new Error(url + " → " + res.status);
+      return await res.json();
+    } finally {
+      clearTimeout(t);
+    }
   },
 
   // BrasilAPI v2: pode trazer coordenada direta do CEP (mais preciso)
