@@ -85,18 +85,14 @@ test("white-label: renomear negócio e trocar cor reflete na UI", async ({ page 
   expect(accent).toBe("#e91e63");
 });
 
-test("catálogo é editável: adicionar produto novo cria insumos próprios", async ({ page }) => {
+test("catálogo é editável: adicionar produto novo pelo modal", async ({ page }) => {
   await bootWithTemplate(page);
   await page.evaluate(() => App.go("config"));
   await page.click("#cfg-add-item");
   await page.fill("#it-name", "Picolé de Manga");
   await page.click('[data-a="s"]');
-  const res = await page.evaluate(() => {
-    const it = App.state.catalog.find((c) => c.name === "Picolé de Manga");
-    return { exists: !!it, insumos: App.state.insumos.filter((i) => i.itemId === (it && it.id)).length };
-  });
-  expect(res.exists).toBe(true);
-  expect(res.insumos).toBe(2); // matéria-prima + embalagem próprios
+  const exists = await page.evaluate(() => App.state.catalog.some((c) => c.name === "Picolé de Manga"));
+  expect(exists).toBe(true);
 });
 
 test("custo da receita: preview e produção usam a MESMA função e batem", async ({ page }) => {
@@ -152,25 +148,34 @@ test("insumos: estoque = registrado − produzido (mesmo produzindo antes de com
   expect(r.stockDepois).toBeCloseTo(r.esperado, 6);
 });
 
-test("modal de repor: 'compra nova' lança gasto, 'ajuste' não", async ({ page }) => {
+test("produção simplificada: quantidade + gasto → estoque, custo/un e gasto no financeiro", async ({ page }) => {
   await bootWithTemplate(page);
-  await page.evaluate(() => App.go("insumos"));
-  // compra nova
-  await page.click("[data-repor]"); // primeiro insumo
-  await page.fill("#rp-qty", "10");
-  await page.fill("#rp-total", "120");
+  await page.evaluate(() => App.go("producao"));
+  await page.click("#pr-new");
+  await page.fill("#pr-qty", "100");
+  await page.fill("#pr-cost", "80");
+  // preview mostra custo por unidade calculado na hora
+  await expect(page.locator("#pr-preview")).toContainText("0,80");
   await page.click('[data-a="s"]');
-  let counts = await page.evaluate(() => ({ p: App.state.purchases.length, e: App.state.expenses.length }));
-  expect(counts.p).toBe(1);
-  expect(counts.e).toBe(1);
-  // ajuste (sem gasto)
-  await page.click("[data-repor]");
-  await page.selectOption("#rp-mode", "ajuste");
-  await page.fill("#rp-qty", "5");
-  await page.click('[data-a="s"]');
-  counts = await page.evaluate(() => ({ p: App.state.purchases.length, e: App.state.expenses.length }));
-  expect(counts.p).toBe(2);
-  expect(counts.e).toBe(1); // gasto NÃO aumentou
+  const r = await page.evaluate(() => {
+    const p = App.state.productions[0];
+    const item = App.state.catalog.find((c) => c.id === p.itemId);
+    return {
+      qty: p.qty, unitCost: p.unitCost, remaining: p.remaining,
+      stock: Engine.productStock(App.state, p.itemId),
+      expense: App.state.expenses.find((e) => e.productionId === p.id),
+    };
+  });
+  expect(r.qty).toBe(100);
+  expect(r.unitCost).toBeCloseTo(0.8, 6);
+  expect(r.stock).toBe(100);
+  expect(r.expense.amount).toBeCloseTo(80, 6); // gasto lançado no financeiro
+  // apagar a produção remove o lote e o gasto ligado
+  await page.click("[data-del]");
+  await page.click('[data-a="yes"]');
+  const after = await page.evaluate(() => ({ p: App.state.productions.length, e: App.state.expenses.length }));
+  expect(after.p).toBe(0);
+  expect(after.e).toBe(0);
 });
 
 test("venda com CPV FIFO real: consome lotes na ordem e calcula lucro", async ({ page }) => {
@@ -416,10 +421,10 @@ test("menu integrado: 7 seções, sub-abas aparecem e lembram a última visitada
   // menu principal enxuto
   const count = await page.locator("#menu-desktop [data-nav]").count();
   expect(count).toBe(7);
-  // seção Produção abre com sub-abas (4 telas)
+  // seção Produção abre com sub-abas (Produção + Estoque)
   await page.click('#menu-desktop [data-nav="producao"]');
   await expect(page.locator("#subtabs")).toBeVisible();
-  expect(await page.locator("#subtabs [data-sub]").count()).toBe(4);
+  expect(await page.locator("#subtabs [data-sub]").count()).toBe(2);
   // navega pra Estoque pela sub-aba
   await page.click('#subtabs [data-sub="estoque"]');
   await expect(page.locator("#view h2")).toContainText("Estoque");

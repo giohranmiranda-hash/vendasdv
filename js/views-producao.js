@@ -10,24 +10,23 @@ const ViewProducao = {
     v.innerHTML = `
       <div class="view-head"><h2>🏭 Produção</h2>
         <button class="btn primary" id="pr-new">＋ Registrar produção</button></div>
-      ${!st.recipes.length ? `<div class="banner info">Crie uma receita primeiro (tela 📖 Receitas) — o custo da produção vem dela.</div>` : ""}
+      <div class="muted small mb">Simples assim: quantas unidades produziu e quanto gastou — o custo por unidade e o lucro das vendas saem daí.</div>
       <div class="list" id="pr-list"></div>`;
 
     U.$("#pr-new").onclick = () => ViewProducao.newModal();
 
     const list = U.$("#pr-list");
-    if (!prods.length) { list.innerHTML = UI.emptyHtml("🏭", "Nenhuma produção registrada ainda."); return; }
+    if (!prods.length) { list.innerHTML = UI.emptyHtml("🏭", "Nenhuma produção registrada ainda — toque em ＋ Registrar produção."); return; }
     list.innerHTML = prods.map((p) => {
       const est = Engine.expiryStatus(p.expiry);
       const badge = est === "vencido" ? `<span class="badge bad">vencido ${U.fmtDateShort(p.expiry)}</span>`
         : est === "vencendo" ? `<span class="badge warn">vence ${U.fmtDateShort(p.expiry)}</span>`
         : `<span class="badge ok">validade ${U.fmtDateShort(p.expiry)}</span>`;
-      const recipe = st.recipes.find((r) => r.id === p.recipeId);
       return `<div class="row-card">
         <span class="color-dot" style="background:${UI.itemColor(p.itemId)}"></span>
         <div class="rc-main">
           <div class="rc-title">${U.num(p.qty, 0)}× ${U.esc(UI.itemName(p.itemId))} ${badge}</div>
-          <div class="rc-sub">${U.fmtDate(p.date)} · receita ${U.esc(recipe ? recipe.name : "(removida)")} · lote com ${U.num(p.remaining, 0)}/${U.num(p.qty, 0)} restantes</div>
+          <div class="rc-sub">${U.fmtDate(p.date)} · lote com ${U.num(p.remaining, 0)}/${U.num(p.qty, 0)} restantes</div>
         </div>
         <div class="rc-side"><div><b>${U.money(p.totalCost)}</b></div><div class="muted small">${U.money(p.unitCost)}/un</div></div>
         <div class="rc-actions"><button class="btn small danger" data-del="${p.id}">🗑️</button></div>
@@ -35,55 +34,51 @@ const ViewProducao = {
     }).join("");
     U.$$("[data-del]", list).forEach((b) => (b.onclick = () => {
       const p = st.productions.find((x) => x.id === b.dataset.del);
-      UI.confirm(`Apagar esta produção de ${U.num(p.qty, 0)}× ${UI.itemName(p.itemId)}? O consumo de insumos dela é devolvido e o lote sai do estoque.`, () => {
+      UI.confirm(`Apagar esta produção de ${U.num(p.qty, 0)}× ${UI.itemName(p.itemId)}? O lote sai do estoque e o gasto ligado a ela sai do Financeiro.`, () => {
         st.productions = st.productions.filter((x) => x.id !== p.id);
+        st.expenses = st.expenses.filter((e) => e.productionId !== p.id);
         App.save();
       }, { danger: true, yes: "Apagar" });
     }));
   },
 
+  // registro simples: quantidade + quanto gastou (o cliente informa o custo)
   newModal() {
     const st = App.state;
     const items = UI.activeItems();
     if (!items.length) return UI.toast("Cadastre produtos no catálogo primeiro (⚙️ Configurações).", "bad");
-    if (!st.recipes.length) return UI.toast("Crie uma receita primeiro (📖 Receitas).", "bad");
     const shelf = Number(st.settings.shelfLifeDays) || 180;
     const m = UI.modal(`
       <h3>🏭 Registrar produção</h3>
+      <label>Produto/sabor</label>
+      ${UI.selectHtml("pr-item", items.map((i) => ({ value: i.id, label: i.name })), items[0].id)}
       <div class="form-row">
-        <div><label>Receita</label>${UI.selectHtml("pr-recipe", st.recipes.map((r) => ({ value: r.id, label: r.name })), st.recipes[0].id)}</div>
-        <div><label>Item/sabor</label>${UI.selectHtml("pr-item", items.map((i) => ({ value: i.id, label: i.name })), items[0].id)}</div>
+        <div><label>Quantidade produzida</label><input id="pr-qty" inputmode="numeric" placeholder="Ex: 100"/></div>
+        <div><label>Quanto gastou pra produzir (R$)</label><input id="pr-cost" inputmode="decimal" placeholder="Ex: 80,00"/></div>
       </div>
       <div class="form-row">
-        <div><label>Quantidade produzida</label><input id="pr-qty" inputmode="numeric" placeholder="0"/></div>
         <div><label>Data</label><input type="date" id="pr-date" value="${U.todayStr()}"/></div>
+        <div><label>Validade do lote</label><input type="date" id="pr-expiry" value="${U.addDays(U.todayStr(), shelf)}"/></div>
       </div>
-      <label>Validade do lote (padrão ${shelf} dias — configurável)</label>
-      <input type="date" id="pr-expiry" value="${U.addDays(U.todayStr(), shelf)}"/>
       <div class="card mt" id="pr-preview" style="background:var(--bg2)"></div>
-      <div class="m-actions"><button class="btn" data-a="c">Cancelar</button><button class="btn primary" data-a="s">Produzir</button></div>`);
+      <label class="flex mt"><input type="checkbox" id="pr-expense" checked style="width:auto"/> Lançar esse gasto no Financeiro (custo variável)</label>
+      <div class="m-actions"><button class="btn" data-a="c">Cancelar</button><button class="btn primary" data-a="s">Adicionar ao estoque</button></div>`);
 
     const upd = () => {
-      const rid = U.$("#pr-recipe").value, iid = U.$("#pr-item").value;
       const qty = U.parseNum(U.$("#pr-qty").value);
-      const bd = Engine.recipeCost(st, rid, iid); // mesma função do preview de Receitas
-      let warn = "";
-      for (const l of bd.lines) {
-        if (!l.insumo || l.dose <= 0) continue;
-        const stock = Engine.insumoStock(st, l.insumo.id);
-        const need = l.dose * qty;
-        if (qty > 0 && need > stock)
-          warn += `<div class="badge bad" style="margin:2px 4px 2px 0">⚠️ ${U.esc(l.insumo.name)}: precisa ${U.num(need, 2)}, tem ${U.num(stock, 2)}</div>`;
-      }
+      const total = U.parseNum(U.$("#pr-cost").value);
+      const unit = qty > 0 ? total / qty : 0;
+      const s2 = st.settings;
+      const suggested = unit > 0 ? unit / (1 - (Number(s2.targetMarginPct || 0) + Number(s2.taxPct || 0)) / 100) : 0;
       U.$("#pr-preview").innerHTML = `
-        <div class="flex spread"><span class="muted small">Custo desta produção (preço atual dos insumos):</span>
-        <b style="color:var(--accent-text)">${U.money(bd.unitCost)}/un ${qty > 0 ? "· total " + U.money(bd.unitCost * qty) : ""}</b></div>
-        ${warn ? `<div class="mt">${warn}<div class="muted small">Você pode produzir mesmo assim — o estoque do insumo ficará negativo até registrar a compra (modelo registrado − produzido).</div></div>` : ""}`;
-      // validade acompanha a data
+        <div class="flex spread"><span class="muted small">Custo por unidade:</span>
+          <b style="color:var(--accent-text)">${U.money(unit)}</b></div>
+        ${suggested > 0 ? `<div class="flex spread"><span class="muted small">Preço de venda sugerido (margem ${U.pct(s2.targetMarginPct, 0)}${Number(s2.taxPct) ? " + imposto " + U.pct(s2.taxPct, 0) : ""}):</span>
+          <b>${U.money(suggested)}</b></div>` : ""}`;
       const d = U.$("#pr-date").value || U.todayStr();
       U.$("#pr-expiry").value = U.addDays(d, shelf);
     };
-    ["pr-recipe", "pr-item", "pr-qty", "pr-date"].forEach((id) => {
+    ["pr-qty", "pr-cost", "pr-date"].forEach((id) => {
       U.$("#" + id).addEventListener("input", upd);
       U.$("#" + id).addEventListener("change", upd);
     });
@@ -92,13 +87,24 @@ const ViewProducao = {
     U.$('[data-a="c"]', m.el).onclick = m.close;
     U.$('[data-a="s"]', m.el).onclick = () => {
       const qty = U.parseNum(U.$("#pr-qty").value);
+      const total = U.parseNum(U.$("#pr-cost").value);
       if (qty <= 0) return U.$("#pr-qty").focus();
-      const prod = Engine.buildProduction(st, U.$("#pr-recipe").value, U.$("#pr-item").value, qty,
-        U.$("#pr-date").value, U.$("#pr-expiry").value);
+      const itemId = U.$("#pr-item").value;
+      const date = U.$("#pr-date").value || U.todayStr();
+      const prod = {
+        id: U.uid(), date, recipeId: null, itemId, qty,
+        unitCost: qty > 0 ? total / qty : 0, totalCost: total,
+        consumed: [],
+        expiry: U.$("#pr-expiry").value || U.addDays(date, shelf),
+        remaining: qty,
+      };
       st.productions.push(prod);
+      if (total > 0 && U.$("#pr-expense").checked) {
+        st.expenses.push({ id: U.uid(), date, desc: "Produção: " + U.num(qty, 0) + "× " + UI.itemName(itemId), amount: total, kind: "variavel", productionId: prod.id });
+      }
       m.close();
       App.save();
-      UI.toast(`Produção registrada: ${U.num(qty, 0)}× ${UI.itemName(prod.itemId)} a ${U.money(prod.unitCost)}/un ✅`, "ok");
+      UI.toast(`${U.num(qty, 0)}× ${UI.itemName(itemId)} no estoque a ${U.money(prod.unitCost)}/un ✅`, "ok");
     };
   },
 

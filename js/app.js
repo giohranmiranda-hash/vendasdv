@@ -13,8 +13,6 @@ const App = {
     { id: "clientes", icon: "👥", label: "Clientes", render: () => ViewCRM.renderClientes() },
     { id: "producao", icon: "🏭", label: "Produção", render: () => ViewProducao.render() },
     { id: "estoque", icon: "📦", label: "Estoque", render: () => ViewProducao.renderEstoque() },
-    { id: "insumos", icon: "🧂", label: "Insumos", render: () => ViewInsumos.render() },
-    { id: "receitas", icon: "📖", label: "Receitas", render: () => ViewReceitas.render() },
     { id: "mapa", icon: "🗺️", label: "Logística", render: () => ViewMapa.render() },
     { id: "assistente", icon: "🤖", label: "Assistente", render: () => ViewAssistente.render() },
     { id: "financeiro", icon: "🏦", label: "Caixa", render: () => ViewFinanceiro.render() },
@@ -29,7 +27,7 @@ const App = {
   groups: [
     { id: "inicio", icon: "📊", label: "Início", views: ["dashboard", "calendario"] },
     { id: "vendas", icon: "💰", label: "Vendas", views: ["vendas", "leads", "clientes"] },
-    { id: "producao", icon: "🏭", label: "Produção", views: ["producao", "estoque", "insumos", "receitas"] },
+    { id: "producao", icon: "🏭", label: "Produção", views: ["producao", "estoque"] },
     { id: "logistica", icon: "🗺️", label: "Logística", views: ["mapa"] },
     { id: "financeiro", icon: "🏦", label: "Financeiro", views: ["financeiro", "metas", "relatorios"] },
     { id: "assistente", icon: "🤖", label: "Assistente IA", views: ["assistente"] },
@@ -223,7 +221,7 @@ const App = {
       <label>Como quer começar o catálogo?</label>
       <div class="onb-choice">
         <button class="btn" id="onb-empty">🧊<br><b>Começar do zero</b><br><small>Eu cadastro meus produtos</small></button>
-        <button class="btn primary" id="onb-template">✨<br><b>Com exemplo</b><br><small>5 sabores + receita editável</small></button>
+        <button class="btn primary" id="onb-template">✨<br><b>Com exemplo</b><br><small>5 sabores de exemplo editáveis</small></button>
       </div>
       <div class="muted small mt">Tudo é editável depois em ⚙️ Configurações — inclusive nome, logo, cores, sabores, receitas e preços.</div>
     `, { sticky: true });

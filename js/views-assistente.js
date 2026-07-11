@@ -51,14 +51,6 @@ const Assistant = {
       action: { label: "Ver estoque", go: "estoque" },
     });
 
-    // insumo acabando / gargalo
-    const bn = Engine.bottleneck(st);
-    if (bn && isFinite(bn.unitsNow) && bn.unitsNow < 50) out.push({
-      kind: bn.unitsNow <= 0 ? "bad" : "warn", icon: "⛔", title: `Gargalo: ${bn.insumo.name}`,
-      text: `Dá pra produzir só ${U.num(bn.unitsNow, 0)} un de ${bn.item.name}. Cada +1 ${bn.insumo.unit} libera ≈ ${bn.dose > 0 ? U.num(1 / bn.dose, 0) : "?"} un.`,
-      action: { label: "Repor insumo", go: "insumos" },
-    });
-
     // cliente sumido (30+ dias sem comprar, já comprou 2+)
     for (const c of st.customers) {
       const sales = st.sales.filter((s) => s.customerId === c.id);
@@ -162,9 +154,12 @@ const Assistant = {
       return `Estoque atual (valor FIFO ${U.money(Engine.stockValue(st))}):\n${linhas || "vazio"}`;
     }
     if (/custo|cpv/.test(t)) {
-      if (!st.recipes.length) return "Você ainda não tem receitas cadastradas — crie em 📖 Receitas.";
-      const linhas = UI.activeItems().slice(0, 8).map((it) => `• ${it.name}: ${U.money(Engine.recipeCost(st, st.recipes[0].id, it.id).unitCost)}/un`).join("\n");
-      return `Custo pela receita "${st.recipes[0].name}" (preço atual dos insumos):\n${linhas}`;
+      const linhas = UI.activeItems()
+        .map((it) => ({ it, c: Engine.estimatedUnitCost(st, it.id) }))
+        .filter((x) => x.c > 0).slice(0, 8)
+        .map((x) => `• ${x.it.name}: ${U.money(x.c)}/un`).join("\n");
+      return linhas ? `Custo por unidade (da sua última produção de cada item):\n${linhas}`
+        : "Registre uma produção informando quanto gastou (🏭 Produção) que eu te digo o custo por unidade de cada produto.";
     }
     if (/receber|fiado|dívida|devendo/.test(t)) {
       const f = Engine.receivables(st);
@@ -174,8 +169,11 @@ const Assistant = {
       return `Você tem ${st.customers.length} cliente(s). ${st.leads.filter((l) => l.status === "Quente").length} lead(s) quente(s) esperando fechamento 🔥`;
     }
     if (/produ[çc]/.test(t)) {
-      const bn = Engine.bottleneck(st);
-      return bn ? `Com o estoque de insumos atual dá pra produzir ~${U.num(bn.unitsNow, 0)} un de ${bn.item.name}. Gargalo: ${bn.insumo.name}.` : "Cadastre receitas e insumos pra eu calcular sua capacidade de produção.";
+      const prods30 = st.productions.filter((p) => U.daysBetween(p.date, U.todayStr()) <= 30);
+      const unids = U.sum(prods30, (p) => Number(p.qty) || 0);
+      return prods30.length
+        ? `Nos últimos 30 dias você produziu ${U.num(unids, 0)} un em ${prods30.length} lote(s), gastando ${U.money(U.sum(prods30, (p) => p.totalCost || 0))}. Estoque atual: ${U.num(U.sum(UI.activeItems(), (i) => Engine.productStock(st, i.id)), 0)} un.`
+        : "Nenhuma produção nos últimos 30 dias — registre em 🏭 Produção (quantidade + quanto gastou).";
     }
     if (/entrega|rota/.test(t)) {
       const hoje = st.deliveries.filter((d) => !d.done && d.date === U.todayStr());

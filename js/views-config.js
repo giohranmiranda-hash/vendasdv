@@ -294,7 +294,6 @@ const ViewConfig = {
       <h3>${it ? "Editar" : "Novo"} produto/sabor</h3>
       <label>Nome</label><input id="it-name" value="${U.esc(it ? it.name : "")}" placeholder="Ex: Gelo de Coco" maxlength="40"/>
       <label>Cor (gráficos e mapa)</label><input type="color" id="it-color" value="${U.esc(it && it.color ? it.color : "#4fc3f7")}" style="width:64px;height:40px;padding:2px"/>
-      ${!it ? `<label class="flex" style="margin-top:14px"><input type="checkbox" id="it-mkinsumos" checked style="width:auto"/> Criar insumos próprios (matéria-prima + embalagem) para este item</label>` : ""}
       <div class="m-actions"><button class="btn" data-a="c">Cancelar</button><button class="btn primary" data-a="s">Salvar</button></div>
     `);
     U.$('[data-a="c"]', m.el).onclick = m.close;
@@ -303,16 +302,7 @@ const ViewConfig = {
       if (!name) return U.$("#it-name").focus();
       const color = U.$("#it-color").value;
       if (it) { it.name = name; it.color = color; }
-      else {
-        const ni = { id: U.uid(), name, color, archived: false };
-        App.state.catalog.push(ni);
-        if (U.$("#it-mkinsumos") && U.$("#it-mkinsumos").checked) {
-          App.state.insumos.push(
-            { id: U.uid(), name: "Matéria-prima " + name, unit: "kg", price: 0, scope: "item", itemId: ni.id, role: "materia" },
-            { id: U.uid(), name: "Embalagem " + name, unit: "un", price: 0, scope: "item", itemId: ni.id, role: "embalagem" }
-          );
-        }
-      }
+      else App.state.catalog.push({ id: U.uid(), name, color, archived: false });
       m.close();
       App.save({ rerender: false });
       ViewConfig.renderCatalog();
