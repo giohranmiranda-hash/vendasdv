@@ -45,8 +45,11 @@ const ViewAssinatura = {
         <div class="card" style="border-color:color-mix(in srgb, var(--accent) 45%, var(--line))">
           <div class="flex spread">
             <h3 style="margin:0">✨ ${U.esc(p.name || "Plano Mensal")}</h3>
-            <span class="badge accent" style="font-size:.95rem;padding:6px 14px">${U.esc(p.price || "—")}</span>
+            <span class="badge accent" style="font-size:.95rem;padding:6px 14px">
+              ${p.oldPrice ? `<s style="opacity:.55;font-weight:400">${U.esc(p.oldPrice)}</s> ` : ""}${U.esc(p.price || "—")}
+            </span>
           </div>
+          ${p.oldPrice ? `<span class="badge ok" style="margin-top:6px">🔥 PROMOÇÃO</span>` : ""}
           <ul style="margin:14px 0 4px;padding-left:4px;list-style:none;display:flex;flex-direction:column;gap:8px">
             ${(p.benefits || []).map((b) => `<li>✅ ${U.esc(b)}</li>`).join("")}
           </ul>

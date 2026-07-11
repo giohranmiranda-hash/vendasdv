@@ -260,6 +260,10 @@ const App = {
     if (!hasCloud) {
       U.$("#login-form").style.display = "none";
       U.$("#login-nocloud").style.display = "block";
+    } else {
+      // com nuvem configurada, o modo offline sai da tela de login
+      U.$("#login-sep").style.display = "none";
+      U.$("#btn-offline").style.display = "none";
     }
 
     // veio do link de confirmação de email? loga direto (sem digitar senha)
@@ -276,8 +280,8 @@ const App = {
 
     // sessão nuvem existente → entra direto
     if (hasCloud && Cloud.session()) { App.enterCloud(); return; }
-    // modo offline já escolhido antes → entra direto
-    if (localStorage.getItem("ice_offline_mode") === "1" || (!hasCloud && Store.load(null))) {
+    // modo offline já escolhido antes → entra direto ("Sair" limpa a flag)
+    if (localStorage.getItem("ice_offline_mode") === "1") {
       App.enter(null); return;
     }
 

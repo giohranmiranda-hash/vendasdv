@@ -19,7 +19,8 @@ window.ICE_CONFIG = {
      usuário corta o acesso à nuvem). */
   PLAN: {
     name: "Plano Mensal",
-    price: "R$ 49,90/mês",
+    price: "R$ 19,97/mês",
+    oldPrice: "R$ 49,90", // riscado na tela (promoção); deixe "" pra esconder
     benefits: [
       "Todos os módulos liberados",
       "Dados na nuvem com backup automático",

@@ -5,8 +5,22 @@
    leads, financeiro/DRE, backup e navegação geral. */
 const { test, expect } = require("@playwright/test");
 
+// simula instalação SEM nuvem (o botão offline só existe nesse cenário),
+// com um PLAN de teste — independente do config.js real de produção
+const NO_CLOUD_CONFIG = () => {
+  const fake = {
+    SUPABASE_URL: "", SUPABASE_ANON_KEY: "",
+    PLAN: {
+      name: "Plano Mensal", price: "R$ 19,97/mês", oldPrice: "R$ 49,90",
+      benefits: ["Todos os módulos liberados"], paymentLink: "", pixKey: "", whatsapp: "",
+    },
+  };
+  Object.defineProperty(window, "ICE_CONFIG", { get: () => fake, set: () => {} });
+};
+
 // entra no modo offline e completa o onboarding com o template de exemplo
 async function bootWithTemplate(page) {
+  await page.addInitScript(NO_CLOUD_CONFIG);
   await page.goto("/index.html");
   await page.click("#btn-offline");
   await page.fill("#onb-name", "Gelato Teste");
@@ -15,6 +29,7 @@ async function bootWithTemplate(page) {
 }
 
 async function bootEmpty(page) {
+  await page.addInitScript(NO_CLOUD_CONFIG);
   await page.goto("/index.html");
   await page.click("#btn-offline");
   await page.fill("#onb-name", "Empresa Vazia");
@@ -380,7 +395,8 @@ test("assinatura: mostra plano, PIX copiável e botão de pagamento quando confi
   await expect(page.locator("#pay-link")).toBeVisible();
   await expect(page.locator("#pay-pix-copy")).toBeVisible();
   await expect(page.locator("#pay-wa")).toBeVisible();
-  await expect(page.locator("#view")).toContainText("R$ 49,90/mês");
+  await expect(page.locator("#view")).toContainText("R$ 19,97/mês"); // promoção
+  await expect(page.locator("#view")).toContainText("R$ 49,90");     // preço antigo riscado
 });
 
 test("assinatura sem configuração: instrui o dono do sistema", async ({ page }) => {
@@ -475,11 +491,7 @@ test("foto de perfil: upload abre editor, corta e aparece na barra lateral", asy
 });
 
 test("sem nuvem configurada: login esconde formulário e oferece offline", async ({ page }) => {
-  // simula instalação sem credenciais, independente do config.js real
-  await page.addInitScript(() => {
-    const fake = { SUPABASE_URL: "", SUPABASE_ANON_KEY: "", PLAN: {} };
-    Object.defineProperty(window, "ICE_CONFIG", { get: () => fake, set: () => {} });
-  });
+  await page.addInitScript(NO_CLOUD_CONFIG);
   await page.goto("/index.html");
   await expect(page.locator("#login-form")).toBeHidden();
   await expect(page.locator("#login-nocloud")).toBeVisible();
@@ -502,11 +514,14 @@ test("sair da conta: item no menu, confirma e volta pra tela de login", async ({
   await expect(page.locator("#brand-name")).toHaveText("Gelato Teste");
 });
 
-test("com nuvem configurada: login mostra formulário de email/senha", async ({ page }) => {
+test("com nuvem configurada: mostra email/senha e ESCONDE o modo offline", async ({ page }) => {
   await page.goto("/index.html");
   await page.evaluate(() => localStorage.clear());
   await page.reload();
   await expect(page.locator("#login-form")).toBeVisible();
   await expect(page.locator("#btn-login")).toBeVisible();
   await expect(page.locator("#btn-signup")).toBeVisible();
+  // opção offline não aparece em instalações com nuvem
+  await expect(page.locator("#btn-offline")).toBeHidden();
+  await expect(page.locator("#login-sep")).toBeHidden();
 });
