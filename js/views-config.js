@@ -59,7 +59,8 @@ const ViewConfig = {
         <div class="card">
           <h3>🎛️ Parâmetros</h3>
           <div class="form-row">
-            <div><label>Imposto/taxa (%)</label><input id="cfg-tax" inputmode="decimal" value="${s.taxPct}"/></div>
+            <div><label class="flex" style="margin-bottom:6px"><input type="checkbox" id="cfg-tax-on" ${s.taxEnabled ? "checked" : ""} style="width:auto"/> Descontar imposto/taxa das vendas</label>
+              <input id="cfg-tax" inputmode="decimal" value="${s.taxPct}" placeholder="%" style="display:${s.taxEnabled ? "block" : "none"}"/></div>
             <div><label>Margem alvo (%)</label><input id="cfg-margin" inputmode="decimal" value="${s.targetMarginPct}"/></div>
             <div><label>Custo por km (frete)</label><input id="cfg-km" inputmode="decimal" value="${s.kmCost}"/></div>
             <div><label>Validade padrão (dias)</label><input id="cfg-shelf" inputmode="numeric" value="${s.shelfLifeDays}"/></div>
@@ -150,6 +151,7 @@ const ViewConfig = {
       App.save();
     };
     U.$("#cfg-accent-reset").onclick = () => { U.$("#cfg-accent").value = "#d4af37"; };
+    U.$("#cfg-tax-on").onchange = (e) => { U.$("#cfg-tax").style.display = e.target.checked ? "block" : "none"; };
 
     U.$("#cfg-geo").onclick = async () => {
       const st = U.$("#cfg-geo-st");
@@ -229,6 +231,7 @@ const ViewConfig = {
       s.accent = U.$("#cfg-accent").value;
       s.address.cep = U.$("#cfg-cep").value.trim();
       s.address.text = U.$("#cfg-addr").value.trim();
+      s.taxEnabled = U.$("#cfg-tax-on").checked;
       s.taxPct = U.parseNum(U.$("#cfg-tax").value);
       s.targetMarginPct = U.parseNum(U.$("#cfg-margin").value);
       s.kmCost = U.parseNum(U.$("#cfg-km").value);

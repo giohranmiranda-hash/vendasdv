@@ -15,7 +15,8 @@ const Store = {
       logo: { type: "emoji", value: "❄️" }, // ou {type:"image", value:dataURL}
       accent: "#d4af37", // dourado premium padrão — trocável por tenant
       address: { text: "", cep: "", lat: null, lng: null },
-      taxPct: 0,            // imposto/taxa %
+      taxEnabled: false,    // liga/desliga o desconto de imposto nas vendas
+      taxPct: 0,            // imposto/taxa % (usado só com taxEnabled)
       targetMarginPct: 30,  // margem alvo %
       kmCost: 1.0,          // custo por km de frete
       shelfLifeDays: 180,   // validade padrão do produto
@@ -119,6 +120,8 @@ const Store = {
     const ds = Store.defaultSettings();
     for (const k in ds) if (st.settings[k] == null) st.settings[k] = ds[k];
     for (const k in ds.waTemplates) if (!st.settings.waTemplates[k]) st.settings.waTemplates[k] = ds.waTemplates[k];
+    // contas antigas: quem já usava % de imposto continua descontando
+    if (st.settings.taxEnabled == null) st.settings.taxEnabled = (Number(st.settings.taxPct) || 0) > 0;
     return st;
   },
 

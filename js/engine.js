@@ -178,12 +178,16 @@ const Engine = {
   },
 
   /* =============== VENDAS =============== */
+  // % efetivo de imposto: 0 quando a chave está desligada nas Configurações
+  effTaxPct(state) {
+    return state.settings.taxEnabled ? (Number(state.settings.taxPct) || 0) : 0;
+  },
   saleGross(sale) {
     return U.sum(sale.items || [], (i) => (Number(i.qty) || 0) * (Number(i.unitPrice) || 0)) +
       (Number(sale.freight) || 0);
   },
   saleTax(state, sale) {
-    return Engine.saleGross(sale) * ((Number(state.settings.taxPct) || 0) / 100);
+    return Engine.saleGross(sale) * (Engine.effTaxPct(state) / 100);
   },
   saleNet(state, sale) {
     return Engine.saleGross(sale) - Engine.saleTax(state, sale) - (Number(sale.cogs) || 0);

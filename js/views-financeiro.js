@@ -34,8 +34,8 @@ const ViewFinanceiro = {
     if (tab === "dre") {
       const rows = [
         ["Faturamento bruto", dre.revenue, ""],
-        ["(−) Imposto/taxa", -dre.tax, ""],
-        ["= Faturamento líquido", dre.netRevenue, "b"],
+        ...(dre.tax > 0 ? [["(−) Imposto/taxa", -dre.tax, ""]] : []),
+        ...(dre.tax > 0 ? [["= Faturamento líquido", dre.netRevenue, "b"]] : []),
         ["(−) Custos variáveis (compras de insumo etc.)", -dre.varCosts, ""],
         ["(−) Custos fixos", -dre.fixCosts, ""],
         ["= Resultado do mês", dre.result, "b"],

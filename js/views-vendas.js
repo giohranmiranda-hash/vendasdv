@@ -23,7 +23,7 @@ const ViewVendas = {
       <div class="grid g4 mb">
         <div class="card kpi accent"><div class="k-label">Faturamento no mês</div><div class="k-value">${U.money(ms.revenue)}</div><div class="k-sub">${ms.count} venda(s)</div></div>
         <div class="card kpi ${ms.profit >= 0 ? "good" : "bad"}"><div class="k-label">Lucro líquido</div><div class="k-value">${U.money(ms.profit)}</div><div class="k-sub">margem ${U.pct(ms.margin)}</div></div>
-        <div class="card kpi"><div class="k-label">CPV real (FIFO)</div><div class="k-value">${U.money(ms.cogs)}</div><div class="k-sub">imposto ${U.money(ms.tax)}</div></div>
+        <div class="card kpi"><div class="k-label">CPV real (FIFO)</div><div class="k-value">${U.money(ms.cogs)}</div><div class="k-sub">${ms.tax > 0 ? "imposto " + U.money(ms.tax) : "custo dos itens vendidos"}</div></div>
         <div class="card kpi"><div class="k-label">Ticket médio</div><div class="k-value">${U.money(ms.ticket)}</div></div>
       </div>
 
@@ -134,13 +134,14 @@ const ViewVendas = {
 
     const preview = () => {
       const gross = U.sum(lines, (l) => U.parseNum(l.qty) * U.parseNum(l.unitPrice)) + U.parseNum(U.$("#vd-freight").value);
-      const tax = gross * ((Number(st.settings.taxPct) || 0) / 100);
+      const effTax = Engine.effTaxPct(st);
+      const tax = gross * (effTax / 100);
       // estimativa de CPV sem consumir (consumo real só no salvar)
       let cogs = 0;
       for (const l of lines) cogs += U.parseNum(l.qty) * Engine.estimatedUnitCost(st, l.itemId);
       U.$("#vd-preview", m.el).innerHTML = `
         <div class="flex spread"><span class="muted small">Total</span><b>${U.money(gross)}</b></div>
-        <div class="flex spread"><span class="muted small">Imposto (${U.pct(st.settings.taxPct, 1)}) + CPV estimado</span><span>−${U.money(tax + cogs)}</span></div>
+        <div class="flex spread"><span class="muted small">${effTax ? "Imposto (" + U.pct(effTax, 1) + ") + " : ""}CPV estimado</span><span>−${U.money(tax + cogs)}</span></div>
         <div class="flex spread"><span class="muted small">Lucro líquido estimado</span><b style="color:${gross - tax - cogs >= 0 ? "var(--ok)" : "var(--bad)"}">${U.money(gross - tax - cogs)}</b></div>`;
     };
 

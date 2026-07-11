@@ -182,6 +182,7 @@ test("venda com CPV FIFO real: consome lotes na ordem e calcula lucro", async ({
   await bootWithTemplate(page);
   const r = await page.evaluate(() => {
     const st = App.state;
+    st.settings.taxEnabled = true; // chave de imposto ligada nas Configurações
     st.settings.taxPct = 10;
     const item = st.catalog[0];
     // dois lotes com custos diferentes (FIFO: o mais antigo primeiro)
@@ -369,6 +370,30 @@ test("assistente local responde perguntas por palavra-chave", async ({ page }) =
   await page.fill("#as-q", "qual meu lucro?");
   await page.click("#as-send");
   await expect(page.locator(".chat-msg.bot").last()).toContainText("lucro líquido", { ignoreCase: true });
+});
+
+test("imposto: chave desligada ignora o %, ligada desconta", async ({ page }) => {
+  await bootWithTemplate(page);
+  const r = await page.evaluate(() => {
+    const st = App.state;
+    st.settings.taxPct = 10;
+    const sale = { items: [{ itemId: st.catalog[0].id, qty: 10, unitPrice: 10 }], freight: 0, cogs: 0 };
+    st.settings.taxEnabled = false;
+    const off = Engine.saleTax(st, sale);
+    st.settings.taxEnabled = true;
+    const on = Engine.saleTax(st, sale);
+    return { off, on };
+  });
+  expect(r.off).toBeCloseTo(0, 6);   // desligado: nada descontado
+  expect(r.on).toBeCloseTo(10, 6);   // ligado: 10% de R$100
+  // UI: checkbox mostra/esconde o campo de %
+  await page.evaluate(() => App.go("config"));
+  await expect(page.locator("#cfg-tax")).toBeVisible(); // taxEnabled=true acima
+  await page.uncheck("#cfg-tax-on");
+  await expect(page.locator("#cfg-tax")).toBeHidden();
+  await page.click("#cfg-save");
+  const enabled = await page.evaluate(() => App.state.settings.taxEnabled);
+  expect(enabled).toBe(false);
 });
 
 test("mobile: menu hambúrguer abre gaveta, navega e fecha", async ({ page }) => {

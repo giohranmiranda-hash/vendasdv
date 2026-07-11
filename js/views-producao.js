@@ -69,11 +69,12 @@ const ViewProducao = {
       const total = U.parseNum(U.$("#pr-cost").value);
       const unit = qty > 0 ? total / qty : 0;
       const s2 = st.settings;
-      const suggested = unit > 0 ? unit / (1 - (Number(s2.targetMarginPct || 0) + Number(s2.taxPct || 0)) / 100) : 0;
+      const effTax = Engine.effTaxPct(st);
+      const suggested = unit > 0 ? unit / (1 - (Number(s2.targetMarginPct || 0) + effTax) / 100) : 0;
       U.$("#pr-preview").innerHTML = `
         <div class="flex spread"><span class="muted small">Custo por unidade:</span>
           <b style="color:var(--accent-text)">${U.money(unit)}</b></div>
-        ${suggested > 0 ? `<div class="flex spread"><span class="muted small">Preço de venda sugerido (margem ${U.pct(s2.targetMarginPct, 0)}${Number(s2.taxPct) ? " + imposto " + U.pct(s2.taxPct, 0) : ""}):</span>
+        ${suggested > 0 ? `<div class="flex spread"><span class="muted small">Preço de venda sugerido (margem ${U.pct(s2.targetMarginPct, 0)}${effTax ? " + imposto " + U.pct(effTax, 0) : ""}):</span>
           <b>${U.money(suggested)}</b></div>` : ""}`;
       const d = U.$("#pr-date").value || U.todayStr();
       U.$("#pr-expiry").value = U.addDays(d, shelf);
