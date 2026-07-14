@@ -249,9 +249,15 @@ const App = {
     U.$("#btn-drawer-close").onclick = () => App.openDrawer(false);
     U.$("#drawer-back").onclick = () => App.openDrawer(false);
 
-    // service worker (PWA)
+    // service worker (PWA) + recarga automática quando chega versão nova
     if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
       navigator.serviceWorker.register("sw.js").catch((e) => console.warn("sw", e));
+      let swRefreshed = false;
+      navigator.serviceWorker.addEventListener("controllerchange", () => {
+        if (swRefreshed) return; // evita loop de reload
+        swRefreshed = true;
+        location.reload();
+      });
     }
 
     const hasCloud = Cloud.enabled();
