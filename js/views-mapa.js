@@ -279,6 +279,7 @@ const ViewMapa = {
 
   /* ---------- criar/editar entrega ---------- */
   deliveryModal(id) {
+    if (!id && !App.guardPaid("registrar entregas")) return;
     const st = App.state;
     const d = id ? st.deliveries.find((x) => x.id === id) : null;
     const items = UI.activeItems();

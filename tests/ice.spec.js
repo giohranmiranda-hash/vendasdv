@@ -396,6 +396,41 @@ test("imposto: chave desligada ignora o %, ligada desconta", async ({ page }) =>
   expect(enabled).toBe(false);
 });
 
+test("assinatura vencida: bloqueia registrar venda e leva pra renovar", async ({ page }) => {
+  await bootWithTemplate(page);
+  await page.evaluate(() => {
+    // simula conta na nuvem com assinatura vencida há 3 dias
+    Cloud.enabled = () => true;
+    Cloud.session = () => ({ user: { id: "t1", email: "cliente@empresa.com" }, access_token: "x" });
+    App.subscription = { paidUntil: U.addDays(U.todayStr(), -3) };
+    App.go("vendas");
+  });
+  // banner de cadeado presente
+  await expect(page.locator("#view")).toContainText("Assinatura vencida");
+  // tentar nova venda NÃO abre o modal — redireciona pra Assinatura
+  await page.click("#vd-new");
+  await expect(page.locator("#modal-root")).not.toContainText("Nova venda");
+  await expect(page.locator("#view h2")).toContainText("Assinatura");
+
+  // ao renovar (dias positivos), volta a permitir vender
+  await page.evaluate(() => {
+    App.subscription = { paidUntil: U.addDays(U.todayStr(), 30) };
+    App.go("vendas");
+  });
+  await expect(page.locator("#view")).not.toContainText("Assinatura vencida");
+  await page.click("#vd-new");
+  await expect(page.locator("#modal-root h3").first()).toContainText("Nova venda");
+});
+
+test("sem assinatura conhecida (offline/rede) NÃO bloqueia — nunca tranca por engano", async ({ page }) => {
+  await bootWithTemplate(page); // modo offline, sem sessão de nuvem
+  const locked = await page.evaluate(() => App.subLocked());
+  expect(locked).toBe(false);
+  await page.evaluate(() => App.go("vendas"));
+  await page.click("#vd-new");
+  await expect(page.locator("#modal-root h3").first()).toContainText("Nova venda");
+});
+
 test("mobile: menu hambúrguer abre gaveta, navega e fecha", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await bootWithTemplate(page);

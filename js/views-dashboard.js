@@ -43,7 +43,7 @@ const ViewDashboard = {
 
       <div class="grid g4 mb">
         <div class="card kpi accent"><div class="k-label">Faturamento</div><div class="k-value" data-countup="${ms.revenue}" data-fmt="money">${U.money(ms.revenue)}</div><div class="k-sub">${ms.count} venda(s)</div></div>
-        <div class="card kpi ${ms.profit >= 0 ? "good" : "bad"}"><div class="k-label">Lucro líquido</div><div class="k-value" data-countup="${ms.profit}" data-fmt="money">${U.money(ms.profit)}</div><div class="k-sub">após imposto e CPV</div></div>
+        <div class="card kpi ${ms.profit >= 0 ? "good" : "bad"}"><div class="k-label">Lucro líquido</div><div class="k-value" data-countup="${ms.profit}" data-fmt="money">${U.money(ms.profit)}</div><div class="k-sub">${Engine.effTaxPct(st) ? "após imposto e custo" : "após o custo dos produtos"}</div></div>
         <div class="card kpi"><div class="k-label">Margem</div><div class="k-value" data-countup="${ms.margin}" data-fmt="pct">${U.pct(ms.margin)}</div><div class="k-sub">alvo ${U.pct(s.targetMarginPct, 0)}</div></div>
         <div class="card kpi"><div class="k-label">Ticket médio</div><div class="k-value" data-countup="${ms.ticket}" data-fmt="money">${U.money(ms.ticket)}</div>
           ${goalPct != null ? `<div class="k-sub">meta do mês: ${U.pct(goalPct, 0)} de ${U.money(goal)}</div>` : ""}</div>

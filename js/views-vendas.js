@@ -85,6 +85,7 @@ const ViewVendas = {
 
   /* modal de venda — usado também pelo CRM (pré-preenchido de um lead) */
   saleModal(prefill) {
+    if (!App.guardPaid("registrar vendas")) return;
     const st = App.state;
     const items = UI.activeItems();
     if (!items.length) return UI.toast("Cadastre produtos no catálogo primeiro (⚙️ Configurações).", "bad");

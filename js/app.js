@@ -149,6 +149,14 @@ const App = {
       console.error("render " + v.id, e);
       U.$("#view").innerHTML = `<div class="banner bad">Erro ao renderizar esta tela: ${U.esc(e.message)}</div>`;
     }
+    // trava: cadeado no topo de toda tela (menos a própria Assinatura)
+    if (App.subLocked() && App.currentView !== "assinatura") {
+      const b = U.el("div", { class: "banner bad", style: "align-items:center" },
+        `🔒 <div style="flex:1"><b>Assinatura vencida.</b> Renove para voltar a registrar vendas, produções e entregas.</div>
+         <button class="btn small primary" data-golock>💎 Renovar</button>`);
+      main.prepend(b);
+      U.$("[data-golock]", b).onclick = () => App.go("assinatura");
+    }
   },
 
   /* ---------- entrada no app ---------- */
@@ -192,6 +200,23 @@ const App = {
           : `⏳ Sua assinatura vence em ${days} dia(s).`, days < 0 ? "bad" : "");
       if (App.currentView === "assinatura") App.render();
     });
+  },
+
+  /* ---------- trava por assinatura vencida ----------
+     Só bloqueia quando SABEMOS que venceu (nuvem + status conhecido +
+     dias < 0). Sem nuvem, status desconhecido ou falha de rede → libera,
+     pra nunca trancar o cliente fora dos próprios dados por engano. */
+  subLocked() {
+    if (!Cloud.enabled() || !Cloud.session()) return false;
+    const d = Cloud.subDaysLeft(App.subscription);
+    return d != null && d < 0;
+  },
+  // usar no início das ações de registro; retorna false e leva pra renovar
+  guardPaid(acao) {
+    if (!App.subLocked()) return true;
+    UI.toast("Renove sua assinatura para " + (acao || "continuar") + " 💎", "bad");
+    App.go("assinatura");
+    return false;
   },
 
   logoutApp() {

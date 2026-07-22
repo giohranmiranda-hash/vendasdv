@@ -44,6 +44,7 @@ const ViewProducao = {
 
   // registro simples: quantidade + quanto gastou (o cliente informa o custo)
   newModal() {
+    if (!App.guardPaid("registrar produções")) return;
     const st = App.state;
     const items = UI.activeItems();
     if (!items.length) return UI.toast("Cadastre produtos no catálogo primeiro (⚙️ Configurações).", "bad");
