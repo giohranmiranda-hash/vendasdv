@@ -244,17 +244,14 @@ const ViewMapa = {
     const doIt = (registerSale) => {
       d.done = true;
       if (registerSale && !d.saleId) {
-        let cogs = 0; const fifo = [];
-        for (const it of d.items) {
-          const r = Engine.consumeFIFO(st, it.itemId, it.qty);
-          cogs += r.cogs; fifo.push(...r.taken);
-        }
+        let cogs = 0;
+        for (const it of d.items) cogs += Engine.cogsFor(st, it.itemId, it.qty);
         const sale = {
           id: U.uid(), date: U.todayStr(),
           channel: st.settings.channels.includes("Delivery") ? "Delivery" : st.settings.channels[0],
           customerId: d.customerId || null, customerName: d.customerId ? "" : d.name,
           items: d.items.slice(), freight: d.freightFree ? 0 : Number(d.freight) || 0,
-          received: true, cogs, fifo,
+          received: true, cogs,
         };
         st.sales.push(sale);
         d.saleId = sale.id;

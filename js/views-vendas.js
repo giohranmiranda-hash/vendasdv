@@ -75,8 +75,7 @@ const ViewVendas = {
     }));
     U.$$("[data-del]", list).forEach((b) => (b.onclick = () => {
       const s = st.sales.find((x) => x.id === b.dataset.del);
-      UI.confirm("Apagar esta venda? Os itens voltam pro estoque (lotes de origem).", () => {
-        Engine.restoreFIFO(st, s.fifo);
+      UI.confirm("Apagar esta venda? Os itens voltam pro estoque automaticamente.", () => {
         st.sales = st.sales.filter((x) => x.id !== s.id);
         App.save();
       }, { danger: true, yes: "Apagar" });
@@ -157,12 +156,10 @@ const ViewVendas = {
         .map((l) => ({ itemId: l.itemId, qty: U.parseNum(l.qty), unitPrice: U.parseNum(l.unitPrice) }))
         .filter((l) => l.qty > 0);
       if (!saleItems.length) return UI.toast("Informe a quantidade de pelo menos um item.", "bad");
-      // CPV real: consome lotes FIFO agora
-      let cogs = 0; const fifo = [];
-      for (const it of saleItems) {
-        const r = Engine.consumeFIFO(st, it.itemId, it.qty);
-        cogs += r.cogs; fifo.push(...r.taken);
-      }
+      // CPV real: custo FIFO dos lotes disponíveis AGORA (antes de gravar).
+      // O estoque baixa sozinho porque é sempre produzido − vendido.
+      let cogs = 0;
+      for (const it of saleItems) cogs += Engine.cogsFor(st, it.itemId, it.qty);
       const sale = {
         id: U.uid(),
         date: U.$("#vd-date").value || U.todayStr(),
@@ -173,7 +170,7 @@ const ViewVendas = {
         items: saleItems,
         freight: U.parseNum(U.$("#vd-freight").value),
         received: U.$("#vd-received").value === "1",
-        cogs, fifo,
+        cogs,
       };
       st.sales.push(sale);
       m.close();

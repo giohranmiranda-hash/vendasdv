@@ -159,9 +159,8 @@ test("produção simplificada: quantidade + gasto → estoque, custo/un e gasto 
   await page.click('[data-a="s"]');
   const r = await page.evaluate(() => {
     const p = App.state.productions[0];
-    const item = App.state.catalog.find((c) => c.id === p.itemId);
     return {
-      qty: p.qty, unitCost: p.unitCost, remaining: p.remaining,
+      qty: p.qty, unitCost: p.unitCost,
       stock: Engine.productStock(App.state, p.itemId),
       expense: App.state.expenses.find((e) => e.productionId === p.id),
     };
@@ -178,44 +177,55 @@ test("produção simplificada: quantidade + gasto → estoque, custo/un e gasto 
   expect(after.e).toBe(0);
 });
 
-test("venda com CPV FIFO real: consome lotes na ordem e calcula lucro", async ({ page }) => {
+test("estoque = produzido − vendido: CPV FIFO e baixa correta na ordem certa", async ({ page }) => {
   await bootWithTemplate(page);
   const r = await page.evaluate(() => {
     const st = App.state;
-    st.settings.taxEnabled = true; // chave de imposto ligada nas Configurações
+    st.settings.taxEnabled = true;
     st.settings.taxPct = 10;
     const item = st.catalog[0];
     // dois lotes com custos diferentes (FIFO: o mais antigo primeiro)
-    st.productions.push({ id: "l1", date: "2026-07-01", recipeId: "x", itemId: item.id, qty: 10, unitCost: 1.0, totalCost: 10, consumed: [], expiry: "2026-12-01", remaining: 10 });
-    st.productions.push({ id: "l2", date: "2026-07-02", recipeId: "x", itemId: item.id, qty: 10, unitCost: 2.0, totalCost: 20, consumed: [], expiry: "2026-12-01", remaining: 10 });
-    const { cogs, taken } = Engine.consumeFIFO(st, item.id, 15); // 10×1,00 + 5×2,00 = 20
-    const sale = { id: "s1", date: U.todayStr(), channel: "Balcão", items: [{ itemId: item.id, qty: 15, unitPrice: 5 }], freight: 0, received: true, cogs, fifo: taken };
-    st.sales.push(sale);
-    return {
-      cogs,
-      rem1: st.productions.find((p) => p.id === "l1").remaining,
-      rem2: st.productions.find((p) => p.id === "l2").remaining,
-      gross: Engine.saleGross(sale),
-      net: Engine.saleNet(st, sale),
-    };
+    st.productions.push({ id: "l1", date: "2026-07-01", itemId: item.id, qty: 10, unitCost: 1.0, totalCost: 10, expiry: "2026-12-01" });
+    st.productions.push({ id: "l2", date: "2026-07-02", itemId: item.id, qty: 10, unitCost: 2.0, totalCost: 20, expiry: "2026-12-01" });
+    const stockAntes = Engine.productStock(st, item.id);
+    const cogs = Engine.cogsFor(st, item.id, 15); // 10×1 + 5×2 = 20
+    st.sales.push({ id: "s1", date: U.todayStr(), channel: "Balcão", items: [{ itemId: item.id, qty: 15, unitPrice: 5 }], freight: 0, received: true, cogs });
+    const sale = st.sales[0];
+    return { stockAntes, cogs, stockDepois: Engine.productStock(st, item.id), gross: Engine.saleGross(sale), net: Engine.saleNet(st, sale) };
   });
+  expect(r.stockAntes).toBe(20);
   expect(r.cogs).toBeCloseTo(20, 6);
-  expect(r.rem1).toBe(0);
-  expect(r.rem2).toBe(5);
+  expect(r.stockDepois).toBe(5); // 20 produzidas − 15 vendidas
   expect(r.gross).toBeCloseTo(75, 6);
-  expect(r.net).toBeCloseTo(75 - 7.5 - 20, 6); // − imposto 10% − CPV
+  expect(r.net).toBeCloseTo(75 - 7.5 - 20, 6);
 });
 
-test("apagar venda devolve os itens pros lotes de origem", async ({ page }) => {
+test("BUG DO CLIENTE: vender ANTES de cadastrar a produção baixa o estoque igual", async ({ page }) => {
   await bootWithTemplate(page);
   const r = await page.evaluate(() => {
     const st = App.state;
     const item = st.catalog[0];
-    st.productions.push({ id: "l1", date: "2026-07-01", recipeId: "x", itemId: item.id, qty: 10, unitCost: 1, totalCost: 10, consumed: [], expiry: "2026-12-01", remaining: 10 });
-    const { cogs, taken } = Engine.consumeFIFO(st, item.id, 4);
-    const before = st.productions[st.productions.length - 1].remaining;
-    Engine.restoreFIFO(st, taken);
-    const after = st.productions[st.productions.length - 1].remaining;
+    // 1) registra a venda PRIMEIRO (estoque ainda vazio)
+    st.sales.push({ id: "s1", date: U.todayStr(), channel: "Balcão", items: [{ itemId: item.id, qty: 154, unitPrice: 2 }], freight: 0, received: true, cogs: 0 });
+    const stockAposVenda = Engine.productStock(st, item.id);
+    // 2) só DEPOIS cadastra a produção de 2954
+    st.productions.push({ id: "p1", date: U.todayStr(), itemId: item.id, qty: 2954, unitCost: 0.5, totalCost: 1477, expiry: U.addDays(U.todayStr(), 180) });
+    return { stockAposVenda, stockFinal: Engine.productStock(st, item.id) };
+  });
+  expect(r.stockAposVenda).toBe(-154);    // vendeu sem estoque: fica negativo (informativo)
+  expect(r.stockFinal).toBe(2954 - 154);  // 2800 — a venda antiga baixa do estoque novo sozinha
+});
+
+test("apagar venda devolve os itens pro estoque automaticamente", async ({ page }) => {
+  await bootWithTemplate(page);
+  const r = await page.evaluate(() => {
+    const st = App.state;
+    const item = st.catalog[0];
+    st.productions.push({ id: "l1", date: "2026-07-01", itemId: item.id, qty: 10, unitCost: 1, totalCost: 10, expiry: "2026-12-01" });
+    st.sales.push({ id: "s1", date: U.todayStr(), channel: "Balcão", items: [{ itemId: item.id, qty: 4, unitPrice: 5 }], freight: 0, received: true, cogs: 4 });
+    const before = Engine.productStock(st, item.id);
+    st.sales = st.sales.filter((s) => s.id !== "s1"); // apaga a venda
+    const after = Engine.productStock(st, item.id);
     return { before, after };
   });
   expect(r.before).toBe(6);
@@ -228,9 +238,10 @@ test("venda pela UI: multi-item, fiado aparece no banner e 'Recebi' liquida", as
   await page.evaluate(() => {
     const st = App.state;
     for (const it of st.catalog.slice(0, 2))
-      st.productions.push({ id: "lote-" + it.id, date: "2026-07-01", recipeId: "x", itemId: it.id, qty: 50, unitCost: 1, totalCost: 50, consumed: [], expiry: "2026-12-31", remaining: 50 });
+      st.productions.push({ id: "lote-" + it.id, date: "2026-07-01", itemId: it.id, qty: 50, unitCost: 1, totalCost: 50, expiry: "2026-12-31" });
     App.go("vendas");
   });
+  const firstItem = await page.evaluate(() => App.state.catalog[0].id);
   await page.click("#vd-new");
   await page.fill('[data-line="0"] [data-lf="qty"]', "3");
   await page.fill('[data-line="0"] [data-lf="unitPrice"]', "10");
@@ -245,6 +256,9 @@ test("venda pela UI: multi-item, fiado aparece no banner e 'Recebi' liquida", as
   // cliente avulso virou cadastro
   const hasCust = await page.evaluate(() => App.state.customers.some((c) => c.name === "Maria Fiado"));
   expect(hasCust).toBe(true);
+  // a venda baixou o estoque (50 − 3 = 47 do primeiro item)
+  const stock0 = await page.evaluate((id) => Engine.productStock(App.state, id), firstItem);
+  expect(stock0).toBe(47);
   // liquida
   await page.click("[data-receber]");
   const fiados = await page.evaluate(() => Engine.receivables(App.state).length);

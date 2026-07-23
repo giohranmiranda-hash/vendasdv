@@ -46,6 +46,7 @@ const Store = {
       recipes: [],      // [{id, name, note, lines:[{type:'insumo'|'slot', insumoId?, slot?, qtyPerUnit, overrides:{itemId:qty}}], yield:1}]
       productions: [],  // [{id, date, recipeId, itemId, qty, unitCost, totalCost, consumed:[{insumoId,qty,price}], expiry, remaining}]
       sales: [],        // [{id, date, channel, customerId, customerName, items:[{itemId,qty,unitPrice}], freight, received, sellerId, cogs, note}]
+      stockAdjust: [],  // baixas manuais de produto: [{id, itemId, qty, date, reason}]
       customers: [],    // [{id, name, phone, address, cep, lat, lng, pinManual, createdAt}]
       leads: [],        // [{id, name, phone, source, interest, status, createdAt, closedAt, customerId}]
       deliveries: [],   // [{id, date, name, phone, customerId, address, lat, lng, pinManual, items, freight, freightFree, done, saleId, price}]

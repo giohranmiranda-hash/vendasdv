@@ -81,14 +81,48 @@ const Engine = {
     };
   },
 
+  /* Estoque de produto = PRODUZIDO − SAÍDAS (vendas + baixas manuais),
+     sempre recalculado do histórico. Independe da ordem de lançamento:
+     vender antes de cadastrar a produção funciona igual, e estoques que
+     ficaram errados se corrigem sozinhos. Nunca subtrai direto no ato. */
+  producedQty(state, itemId) {
+    return U.sum(state.productions.filter((p) => p.itemId === itemId), (p) => Number(p.qty) || 0);
+  },
+  soldQty(state, itemId) {
+    let t = 0;
+    for (const s of state.sales)
+      for (const i of s.items || []) if (i.itemId === itemId) t += Number(i.qty) || 0;
+    return t;
+  },
+  adjustedOutQty(state, itemId) { // baixas manuais (perda/vencido/consumo próprio)
+    return U.sum((state.stockAdjust || []).filter((a) => a.itemId === itemId), (a) => Number(a.qty) || 0);
+  },
+  outQty(state, itemId) {
+    return Engine.soldQty(state, itemId) + Engine.adjustedOutQty(state, itemId);
+  },
+
   productStock(state, itemId) {
-    return U.sum(state.productions.filter((p) => p.itemId === itemId), (p) => Number(p.remaining) || 0);
+    return Engine.producedQty(state, itemId) - Engine.outQty(state, itemId);
+  },
+
+  // lotes com o saldo restante calculado ao vivo: distribui as saídas nos
+  // lotes por ordem (FIFO, mais antigo primeiro) — usado no Estoque e no valor
+  computedLots(state, itemId) {
+    const lots = U.sortBy(state.productions.filter((p) => p.itemId === itemId), (p) => p.date + p.id);
+    let out = Engine.outQty(state, itemId);
+    return lots.map((lot) => {
+      const q = Number(lot.qty) || 0;
+      const consume = Math.min(q, Math.max(0, out));
+      out -= consume;
+      return { lot, remaining: q - consume };
+    });
   },
 
   stockValue(state, itemId) {
+    const ids = itemId ? [itemId] : state.catalog.map((c) => c.id);
     let t = 0;
-    for (const p of state.productions)
-      if (!itemId || p.itemId === itemId) t += (Number(p.remaining) || 0) * (Number(p.unitCost) || 0);
+    for (const id of ids)
+      for (const cl of Engine.computedLots(state, id)) t += cl.remaining * (Number(cl.lot.unitCost) || 0);
     return t;
   },
 
@@ -105,34 +139,23 @@ const Engine = {
   estimatedUnitCost(state, itemId) {
     const prods = state.productions.filter((p) => p.itemId === itemId);
     if (prods.length) return Number(prods[prods.length - 1].unitCost) || 0;
-    if (state.recipes.length) return Engine.recipeCost(state, state.recipes[0].id, itemId).unitCost;
+    if (state.recipes && state.recipes.length) return Engine.recipeCost(state, state.recipes[0].id, itemId).unitCost;
     return 0;
   },
 
-  // consome do estoque FIFO (lotes mais antigos primeiro) — retorna CPV real
-  // e a lista do que consumiu (para poder devolver se a venda for apagada)
-  consumeFIFO(state, itemId, qty) {
+  // CPV de uma venda: custo FIFO dos lotes DISPONÍVEIS no momento (sem mutar
+  // nada). Chamado antes de gravar a venda, então reflete o estoque de antes.
+  cogsFor(state, itemId, qty) {
     qty = Number(qty) || 0;
     let left = qty, cogs = 0;
-    const taken = [];
-    const lots = U.sortBy(state.productions.filter((p) => p.itemId === itemId && (p.remaining || 0) > 0), (p) => p.date);
-    for (const lot of lots) {
+    for (const cl of Engine.computedLots(state, itemId)) {
       if (left <= 0) break;
-      const take = Math.min(left, lot.remaining);
-      lot.remaining -= take;
+      const take = Math.min(left, cl.remaining);
+      cogs += take * (Number(cl.lot.unitCost) || 0);
       left -= take;
-      cogs += take * (Number(lot.unitCost) || 0);
-      taken.push({ prodId: lot.id, qty: take });
     }
-    if (left > 0) cogs += left * Engine.estimatedUnitCost(state, itemId); // sem lote: melhor estimativa
-    return { cogs, taken };
-  },
-
-  restoreFIFO(state, taken) {
-    for (const t of taken || []) {
-      const lot = state.productions.find((p) => p.id === t.prodId);
-      if (lot) lot.remaining = (Number(lot.remaining) || 0) + t.qty;
-    }
+    if (left > 0) cogs += left * Engine.estimatedUnitCost(state, itemId); // vendeu antes de produzir: melhor estimativa
+    return cogs;
   },
 
   /* =============== CAPACIDADE / GARGALO =============== */

@@ -26,7 +26,7 @@ const ViewProducao = {
         <span class="color-dot" style="background:${UI.itemColor(p.itemId)}"></span>
         <div class="rc-main">
           <div class="rc-title">${U.num(p.qty, 0)}× ${U.esc(UI.itemName(p.itemId))} ${badge}</div>
-          <div class="rc-sub">${U.fmtDate(p.date)} · lote com ${U.num(p.remaining, 0)}/${U.num(p.qty, 0)} restantes</div>
+          <div class="rc-sub">${U.fmtDate(p.date)} · produzidas ${U.num(p.qty, 0)} un</div>
         </div>
         <div class="rc-side"><div><b>${U.money(p.totalCost)}</b></div><div class="muted small">${U.money(p.unitCost)}/un</div></div>
         <div class="rc-actions"><button class="btn small danger" data-del="${p.id}">🗑️</button></div>
@@ -117,48 +117,51 @@ const ViewProducao = {
     const items = UI.activeItems();
 
     const totalValue = Engine.stockValue(st);
-    const expiring = st.productions.filter((p) => (p.remaining || 0) > 0 && Engine.expiryStatus(p.expiry) === "vencendo");
-    const expired = st.productions.filter((p) => (p.remaining || 0) > 0 && Engine.expiryStatus(p.expiry) === "vencido");
+    // lotes COM saldo restante calculado ao vivo (produzido − vendido − baixas)
+    const liveLots = (id) => Engine.computedLots(st, id).filter((cl) => cl.remaining > 0);
+    const allLive = items.flatMap((it) => liveLots(it.id));
+    const expiring = allLive.filter((cl) => Engine.expiryStatus(cl.lot.expiry) === "vencendo");
+    const expired = allLive.filter((cl) => Engine.expiryStatus(cl.lot.expiry) === "vencido");
 
     v.innerHTML = `
       <div class="view-head"><h2>📦 Estoque</h2></div>
-      ${expired.length ? `<div class="banner bad">🚨 <div><b>${expired.length} lote(s) vencido(s)</b> ainda com saldo — considere dar baixa. ${expired.map((p) => U.esc(UI.itemName(p.itemId)) + " (" + U.num(p.remaining, 0) + " un)").join(", ")}</div></div>` : ""}
-      ${expiring.length ? `<div class="banner warn">⏳ <div><b>${expiring.length} lote(s) vencendo em até 14 dias:</b> ${expiring.map((p) => U.esc(UI.itemName(p.itemId)) + " " + U.fmtDateShort(p.expiry)).join(", ")} — priorize a venda!</div></div>` : ""}
+      ${expired.length ? `<div class="banner bad">🚨 <div><b>${expired.length} lote(s) vencido(s)</b> ainda com saldo — considere dar baixa. ${expired.map((cl) => U.esc(UI.itemName(cl.lot.itemId)) + " (" + U.num(cl.remaining, 0) + " un)").join(", ")}</div></div>` : ""}
+      ${expiring.length ? `<div class="banner warn">⏳ <div><b>${expiring.length} lote(s) vencendo em até 14 dias:</b> ${expiring.map((cl) => U.esc(UI.itemName(cl.lot.itemId)) + " " + U.fmtDateShort(cl.lot.expiry)).join(", ")} — priorize a venda!</div></div>` : ""}
       <div class="grid g3 mb">
-        <div class="card kpi accent"><div class="k-label">Valor do estoque (custo real FIFO)</div><div class="k-value">${U.money(totalValue)}</div></div>
+        <div class="card kpi accent"><div class="k-label">Valor do estoque (custo real)</div><div class="k-value">${U.money(totalValue)}</div></div>
         <div class="card kpi"><div class="k-label">Unidades em estoque</div><div class="k-value">${U.num(U.sum(items, (i) => Engine.productStock(st, i.id)), 0)}</div></div>
-        <div class="card kpi ${expired.length ? "bad" : ""}"><div class="k-label">Lotes ativos</div><div class="k-value">${st.productions.filter((p) => (p.remaining || 0) > 0).length}</div></div>
+        <div class="card kpi ${expired.length ? "bad" : ""}"><div class="k-label">Lotes ativos</div><div class="k-value">${allLive.length}</div></div>
       </div>
       <div class="list">${items.map((it) => {
         const qty = Engine.productStock(st, it.id);
         const val = Engine.stockValue(st, it.id);
-        const lots = U.sortBy(st.productions.filter((p) => p.itemId === it.id && (p.remaining || 0) > 0), (p) => p.expiry || p.date);
+        const lots = U.sortBy(liveLots(it.id), (cl) => cl.lot.expiry || cl.lot.date);
         return `<div class="row-card">
           <span class="color-dot" style="background:${U.esc(it.color)}"></span>
           <div class="rc-main"><div class="rc-title">${U.esc(it.name)}</div>
-            <div class="rc-sub">${lots.length ? lots.map((p) => {
-              const est = Engine.expiryStatus(p.expiry);
+            <div class="rc-sub">${lots.length ? lots.map((cl) => {
+              const est = Engine.expiryStatus(cl.lot.expiry);
               const cls = est === "vencido" ? "bad" : est === "vencendo" ? "warn" : "ok";
-              return `<span class="badge ${cls}">${U.num(p.remaining, 0)} un · val. ${U.fmtDateShort(p.expiry)}</span>`;
-            }).join(" ") : "sem lotes"}</div></div>
+              return `<span class="badge ${cls}">${U.num(cl.remaining, 0)} un · val. ${U.fmtDateShort(cl.lot.expiry)}</span>`;
+            }).join(" ") : (qty < 0 ? `<span class="badge bad">${U.num(qty, 0)} un — vendeu mais do que produziu</span>` : "sem estoque")}</div></div>
           <div class="rc-side"><div style="font-size:1.15rem"><b>${U.num(qty, 0)} un</b></div><div class="muted small">${U.money(val)}</div></div>
-          ${lots.length ? `<div class="rc-actions"><button class="btn small" data-baixa="${it.id}">📉 Dar baixa</button></div>` : ""}
+          ${qty > 0 ? `<div class="rc-actions"><button class="btn small" data-baixa="${it.id}">📉 Dar baixa</button></div>` : ""}
         </div>`;
       }).join("") || UI.emptyHtml("📦", "Estoque vazio — registre uma produção.")}</div>`;
 
-    // baixa manual (perda/vencido/consumo próprio) — FIFO, sem gerar venda
+    // baixa manual (perda/vencido/consumo próprio) — registra uma saída, sem venda
     U.$$("[data-baixa]").forEach((b) => (b.onclick = () => {
       const it = items.find((x) => x.id === b.dataset.baixa);
       const m = UI.modal(`
         <h3>📉 Dar baixa — ${U.esc(it.name)}</h3>
-        <div class="muted small mb">Para perdas, vencidos ou consumo próprio. Sai do estoque (FIFO) sem registrar venda.</div>
+        <div class="muted small mb">Para perdas, vencidos ou consumo próprio. Sai do estoque sem registrar venda.</div>
         <label>Quantidade</label><input id="bx-qty" inputmode="numeric" placeholder="0"/>
         <div class="m-actions"><button class="btn" data-a="c">Cancelar</button><button class="btn danger" data-a="s">Dar baixa</button></div>`);
       U.$('[data-a="c"]', m.el).onclick = m.close;
       U.$('[data-a="s"]', m.el).onclick = () => {
         const qty = U.parseNum(U.$("#bx-qty").value);
         if (qty <= 0) return;
-        Engine.consumeFIFO(st, it.id, Math.min(qty, Engine.productStock(st, it.id)));
+        st.stockAdjust.push({ id: U.uid(), itemId: it.id, qty, date: U.todayStr(), reason: "baixa" });
         m.close();
         App.save();
         UI.toast("Baixa registrada 📉", "ok");
