@@ -58,12 +58,33 @@ create policy "tenant lê a própria assinatura"
   on public.subscriptions for select
   using (auth.uid() = user_id);
 
--- (opcional) trial automático: toda conta nova ganha 7 dias grátis
+-- =====================================================================
+-- INDIQUE E GANHE: cada conta tem um ref_code; quem entra com um código
+-- fica marcado em referred_by. Quando o indicado faz o PRIMEIRO
+-- pagamento, o webhook credita +15 dias ao padrinho (ref_bonus_given
+-- evita crédito duplicado). Escrita só via service role.
+-- =====================================================================
+
+alter table public.subscriptions
+  add column if not exists ref_code text unique,
+  add column if not exists referred_by text,
+  add column if not exists ref_bonus_given boolean not null default false;
+
+-- gera código pra contas que já existem
+update public.subscriptions
+set ref_code = upper(substring(replace(gen_random_uuid()::text, '-', ''), 1, 6))
+where ref_code is null;
+
+-- trial automático de 7 dias + código de convite + captura do código usado
 create or replace function public.handle_new_user()
 returns trigger language plpgsql security definer set search_path = public as $$
 begin
-  insert into public.subscriptions (user_id, email, paid_until)
-  values (new.id, new.email, (now()::date + interval '7 days'))
+  insert into public.subscriptions (user_id, email, paid_until, ref_code, referred_by)
+  values (
+    new.id, new.email, (now()::date + interval '7 days'),
+    upper(substring(replace(gen_random_uuid()::text, '-', ''), 1, 6)),
+    nullif(upper(trim(coalesce(new.raw_user_meta_data->>'ref', ''))), '')
+  )
   on conflict (user_id) do nothing;
   return new;
 end; $$;

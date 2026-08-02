@@ -53,8 +53,11 @@ const Cloud = {
     return s;
   },
 
-  async signup(email, password) {
-    const json = await Cloud.authRequest("signup", { email, password });
+  async signup(email, password, refCode) {
+    const body = { email, password };
+    // código de convite vai nos metadados — o trigger do banco grava em referred_by
+    if (refCode) body.data = { ref: String(refCode).trim().toUpperCase() };
+    const json = await Cloud.authRequest("signup", body);
     if (json.access_token) return Cloud._storeAuth(json);
     return { needsConfirm: true, email }; // confirmação de email ativada no projeto
   },
@@ -165,12 +168,14 @@ const Cloud = {
     if (!s) return Cloud.cachedSubscription();
     try {
       const res = await fetch(
-        ICE_CONFIG.SUPABASE_URL + "/rest/v1/subscriptions?select=paid_until,plan&user_id=eq." + s.user.id,
+        ICE_CONFIG.SUPABASE_URL + "/rest/v1/subscriptions?select=paid_until,plan,ref_code,referred_by&user_id=eq." + s.user.id,
         { headers: Cloud.headers(s.access_token) }
       );
       if (!res.ok) throw new Error("subscriptions " + res.status);
       const rows = await res.json();
-      const sub = rows.length ? { paidUntil: rows[0].paid_until, plan: rows[0].plan, fetchedAt: Date.now() } : { none: true, fetchedAt: Date.now() };
+      const sub = rows.length
+        ? { paidUntil: rows[0].paid_until, plan: rows[0].plan, refCode: rows[0].ref_code, referredBy: rows[0].referred_by, fetchedAt: Date.now() }
+        : { none: true, fetchedAt: Date.now() };
       localStorage.setItem(Cloud.subCacheKey(s.user.id), JSON.stringify(sub));
       return sub;
     } catch (e) {

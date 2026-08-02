@@ -285,6 +285,15 @@ const App = {
       });
     }
 
+    // link de convite (?ref=CODIGO): guarda pra usar no cadastro
+    const refParam = new URLSearchParams(location.search).get("ref");
+    if (refParam) {
+      localStorage.setItem("ice_ref_code", refParam.trim().toUpperCase());
+      history.replaceState(null, "", location.pathname);
+    }
+    const savedRef = localStorage.getItem("ice_ref_code") || "";
+    if (U.$("#login-ref")) U.$("#login-ref").value = savedRef;
+
     const hasCloud = Cloud.enabled();
     if (!hasCloud) {
       U.$("#login-form").style.display = "none";
@@ -332,7 +341,7 @@ const App = {
         if (pass.length < 6) return msg("A senha precisa de pelo menos 6 caracteres.", "err");
         msg("Criando conta…");
         try {
-          const r = await Cloud.signup(email, pass);
+          const r = await Cloud.signup(email, pass, U.$("#login-ref").value.trim());
           if (r.needsConfirm) msg("Conta criada! Confirme o email que enviamos e depois faça login. 📧", "ok");
           else { localStorage.removeItem("ice_offline_mode"); App.enterCloud(); }
         } catch (e) { msg(traduzAuth(e.message), "err"); }

@@ -94,6 +94,31 @@ Deno.serve(async (req) => {
     });
 
     console.log(`assinatura renovada: ${email ?? userId} até ${paidUntil}`);
+
+    // INDIQUE E GANHE: primeiro pagamento de um indicado → +15 dias pro padrinho
+    try {
+      const { data: me } = await admin.from("subscriptions")
+        .select("referred_by, ref_bonus_given").eq("user_id", userId).maybeSingle();
+      if (me?.referred_by && !me.ref_bonus_given) {
+        const { data: padrinho } = await admin.from("subscriptions")
+          .select("user_id, email, paid_until").eq("ref_code", me.referred_by).maybeSingle();
+        if (padrinho && padrinho.user_id !== userId) {
+          const hoje = new Date();
+          const base2 = padrinho.paid_until && new Date(padrinho.paid_until) > hoje
+            ? new Date(padrinho.paid_until) : hoje;
+          base2.setDate(base2.getDate() + 15);
+          await admin.from("subscriptions").update({
+            paid_until: base2.toISOString().slice(0, 10),
+            updated_at: new Date().toISOString(),
+          }).eq("user_id", padrinho.user_id);
+          await admin.from("subscriptions").update({ ref_bonus_given: true }).eq("user_id", userId);
+          console.log(`bônus de indicação: +15 dias para ${padrinho.email ?? padrinho.user_id}`);
+        }
+      }
+    } catch (e) {
+      console.error("bônus de indicação falhou (renovação principal ok)", e);
+    }
+
     return new Response("ok", { status: 200 });
   } catch (e) {
     console.error(e);

@@ -32,6 +32,31 @@ const ViewAssinatura = {
     </div>`;
   },
 
+  // 🎁 Indique e ganhe: link com o código da conta; +15 dias quando o
+  // indicado faz o primeiro pagamento (creditado pelo servidor/webhook)
+  referralHtml() {
+    const sess = Cloud.session();
+    const sub = App.subscription;
+    if (!sess || !sub || !sub.refCode) return "";
+    const base = (window.ICE_CONFIG && ICE_CONFIG.APP_URL) ||
+      (location.protocol.startsWith("http") ? location.origin + location.pathname : "");
+    const link = base + "?ref=" + encodeURIComponent(sub.refCode);
+    const waMsg = `Ei! Eu uso o Ice Sistema pra gerenciar meu negócio (vendas, estoque, entregas, tudo no celular). Testa 7 dias grátis pelo meu link: ${link} — usando ele você já entra como meu convidado! ❄️`;
+    return `<div class="card mb" style="border-color:color-mix(in srgb, var(--ok) 45%, var(--line))">
+      <h3>🎁 Indique e ganhe 15 dias</h3>
+      <div class="muted small mb">Compartilhe seu link. Quando o indicado <b>assinar</b> (primeiro pagamento), você ganha <b>+15 dias</b> na sua assinatura — automático, sem limite de amigos.</div>
+      <div class="flex spread" style="flex-wrap:nowrap;background:var(--bg2);border-radius:10px;padding:8px 12px">
+        <code style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--accent-text)">${U.esc(link)}</code>
+        <button class="btn small" id="ref-copy">📋 Copiar</button>
+      </div>
+      <div class="flex mt">
+        <button class="btn wa" id="ref-wa" style="flex:1">💬 Convidar pelo WhatsApp</button>
+        <span class="badge accent" title="Seu código">Código: ${U.esc(sub.refCode)}</span>
+      </div>
+      ${sub.referredBy ? `<div class="muted small mt">Você entrou com o convite <b>${U.esc(sub.referredBy)}</b> 💛</div>` : ""}
+    </div>`;
+  },
+
   render() {
     const v = U.$("#view");
     const p = ViewAssinatura.plan();
@@ -41,6 +66,7 @@ const ViewAssinatura = {
     v.innerHTML = `
       <div class="view-head"><h2>💎 Assinatura</h2></div>
       ${ViewAssinatura.statusHtml()}
+      ${ViewAssinatura.referralHtml()}
       <div class="grid g2">
         <div class="card" style="border-color:color-mix(in srgb, var(--accent) 45%, var(--line))">
           <div class="flex spread">
@@ -85,6 +111,22 @@ const ViewAssinatura = {
           <div class="muted small">Dúvidas? ${p.whatsapp ? "Chame no WhatsApp pelo botão ao lado." : "Fale com quem te forneceu o sistema."}</div>
         </div>
       </div>`;
+
+    const refCopy = U.$("#ref-copy");
+    if (refCopy) {
+      const sub = App.subscription;
+      const base = (window.ICE_CONFIG && ICE_CONFIG.APP_URL) ||
+        (location.protocol.startsWith("http") ? location.origin + location.pathname : "");
+      const link = base + "?ref=" + encodeURIComponent(sub.refCode);
+      refCopy.onclick = async () => {
+        try { await navigator.clipboard.writeText(link); UI.toast("Link de convite copiado 📋", "ok"); }
+        catch (e) { UI.toast("Copie manualmente: " + link, "bad"); }
+      };
+      U.$("#ref-wa").onclick = () => {
+        const waMsg = `Ei! Eu uso o Ice Sistema pra gerenciar meu negócio (vendas, estoque, entregas, tudo no celular). Testa 7 dias grátis pelo meu link: ${link} — usando ele você já entra como meu convidado! ❄️`;
+        window.open("https://wa.me/?text=" + encodeURIComponent(waMsg), "_blank");
+      };
+    }
 
     const refresh = U.$("#sub-refresh");
     if (refresh) refresh.onclick = async (e) => {

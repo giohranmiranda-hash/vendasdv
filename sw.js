@@ -2,7 +2,7 @@
    Estratégia: network-first pro HTML (nunca ficar preso numa versão velha),
    cache-first com atualização em segundo plano pros demais arquivos.
    IMPORTANTE: dar bump em CACHE_VERSION a cada deploy relevante. */
-const CACHE_VERSION = "ice-v12";
+const CACHE_VERSION = "ice-v13";
 const ASSETS = [
   "./",
   "./index.html",

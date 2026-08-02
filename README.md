@@ -102,7 +102,25 @@ Pra **renovar automaticamente quando o pagamento confirma** (Mercado Pago):
 
 **Corte de acesso de quem não paga:** no painel do Supabase → **Authentication → Users**,
 banir/desativar o usuário bloqueia o login na nuvem. Os dados ficam guardados e voltam
-quando a assinatura reativar.
+quando a assinatura reativar. Dentro do app, assinatura vencida trava o registro de
+vendas/produções/entregas (leitura, backup e renovação continuam liberados).
+
+### 🎁 Indique e ganhe 15 dias
+
+Cada empresa recebe um **código de convite** e um link
+`https://SEUSITE/?ref=CODIGO`, exibidos na aba Assinatura com botões de copiar e
+convidar pelo WhatsApp. Quem abre pelo link (ou digita o código na tela de cadastro)
+fica marcado como indicado. Quando esse indicado faz o **primeiro pagamento**, o
+webhook credita **+15 dias** ao padrinho, uma única vez por indicado
+(`ref_bonus_given`), sem limite de amigos.
+
+O crédito é feito **no servidor** (Edge Function com service role) — o app nunca
+escreve na tabela de assinaturas, então não dá pra burlar criando contas falsas: o
+bônus só existe se houver pagamento aprovado.
+
+Ativação: rode o `supabase.sql` atualizado (adiciona `ref_code`, `referred_by` e
+`ref_bonus_given`, e gera código pras contas existentes) e refaça o deploy da função
+`mp-webhook`. Ajuste `APP_URL` em `js/config.js` se o domínio mudar.
 
 ## 🔑 Integrações opcionais (por tenant, nas Configurações)
 

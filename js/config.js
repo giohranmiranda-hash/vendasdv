@@ -17,6 +17,8 @@ window.ICE_CONFIG = {
      (Mercado Pago, Stripe, Kiwify etc.) e/ou PIX. Quem pagou/não pagou é
      controlado por você no painel do Supabase (Authentication → desativar
      usuário corta o acesso à nuvem). */
+  APP_URL: "https://icesistema.netlify.app", // usado no link de convite (indique e ganhe)
+
   PLAN: {
     name: "Plano Mensal",
     price: "R$ 19,97/mês",

@@ -569,6 +569,31 @@ test("foto de perfil: upload abre editor, corta e aparece na barra lateral", asy
   await expect(page.locator("#profile-side .pname")).toHaveText("Giohran");
 });
 
+test("indique e ganhe: link ?ref= é capturado e pré-preenche o cadastro", async ({ page }) => {
+  await page.goto("/index.html?ref=a1b2c3");
+  await page.waitForTimeout(300);
+  const saved = await page.evaluate(() => localStorage.getItem("ice_ref_code"));
+  expect(saved).toBe("A1B2C3"); // guardado em maiúsculas
+  await expect(page.locator("#login-ref")).toHaveValue("A1B2C3"); // campo do cadastro preenchido
+  // some da URL (limpa o endereço)
+  expect(page.url()).not.toContain("ref=");
+});
+
+test("indique e ganhe: card com link e código aparece na Assinatura", async ({ page }) => {
+  await bootWithTemplate(page);
+  await page.evaluate(() => {
+    Cloud.enabled = () => true;
+    Cloud.session = () => ({ user: { id: "t1", email: "dona@empresa.com" }, access_token: "x" });
+    App.subscription = { paidUntil: U.addDays(U.todayStr(), 20), refCode: "GELO42", referredBy: "AMIGO1" };
+    App.go("assinatura");
+  });
+  await expect(page.locator("#view")).toContainText("Indique e ganhe 15 dias");
+  await expect(page.locator("#view")).toContainText("?ref=GELO42");
+  await expect(page.locator("#view")).toContainText("Código: GELO42");
+  await expect(page.locator("#ref-wa")).toBeVisible();
+  await expect(page.locator("#view")).toContainText("convite AMIGO1");
+});
+
 test("sem nuvem configurada: login esconde formulário e oferece offline", async ({ page }) => {
   await page.addInitScript(NO_CLOUD_CONFIG);
   await page.goto("/index.html");
